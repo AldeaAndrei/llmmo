@@ -1,3 +1,4 @@
+using llmmo.Api;
 using llmmo.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,5 +41,7 @@ app.MapHealthChecks("/health/db", new Microsoft.AspNetCore.Diagnostics.HealthChe
 {
     Predicate = check => check.Name == "postgres",
 });
+
+app.MapApiEndpoints();
 
 app.Run();

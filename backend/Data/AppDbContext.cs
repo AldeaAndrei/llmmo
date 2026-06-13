@@ -17,6 +17,8 @@ public class AppDbContext : DbContext
 
     public DbSet<GameAction> Actions => Set<GameAction>();
 
+    public DbSet<WorldState> WorldState => Set<WorldState>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var playerTypeConverter = new ValueConverter<PlayerType, string>(
@@ -107,6 +109,7 @@ public class AppDbContext : DbContext
             entity.HasKey(action => action.Id);
 
             entity.Property(action => action.Id).HasColumnName("id");
+            entity.Property(action => action.PlayerId).HasColumnName("player_id");
             entity.Property(action => action.CityId).HasColumnName("city_id");
             entity.Property(action => action.Type)
                 .HasColumnName("type")
@@ -143,6 +146,34 @@ public class AppDbContext : DbContext
                 .WithMany(city => city.Actions)
                 .HasForeignKey(action => action.CityId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(action => action.Player)
+                .WithMany(player => player.Actions)
+                .HasForeignKey(action => action.PlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WorldState>(entity =>
+        {
+            entity.ToTable("world_state");
+
+            entity.HasKey(state => state.Id);
+
+            entity.Property(state => state.Id).HasColumnName("id");
+            entity.Property(state => state.CurrentTick)
+                .HasColumnName("current_tick")
+                .HasDefaultValue(0)
+                .IsRequired();
+            entity.Property(state => state.UpdatedAt)
+                .HasColumnName("updated_at")
+                .IsRequired();
+
+            entity.HasData(new WorldState
+            {
+                Id = 1,
+                CurrentTick = 0,
+                UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            });
         });
     }
 
@@ -196,6 +227,14 @@ public class AppDbContext : DbContext
                 entry.Entity.UpdatedAt = utcNow;
             }
             else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<WorldState>())
+        {
+            if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = utcNow;
             }

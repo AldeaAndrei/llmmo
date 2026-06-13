@@ -13,5 +13,7 @@ public class Player
     public DateTime UpdatedAt { get; set; }
 
     public ICollection<City> Cities { get; set; } = new List<City>();
+
+    public ICollection<GameAction> Actions { get; set; } = new List<GameAction>();
 }
 
