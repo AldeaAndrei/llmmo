@@ -15,11 +15,17 @@ public class AppDbContext : DbContext
 
     public DbSet<City> Cities => Set<City>();
 
+    public DbSet<GameAction> Actions => Set<GameAction>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var playerTypeConverter = new ValueConverter<PlayerType, string>(
             value => value == PlayerType.Human ? "human" : "llm",
             value => value == "human" ? PlayerType.Human : PlayerType.Llm);
+
+        var actionStatusConverter = new ValueConverter<ActionStatus, string>(
+            value => ActionStatusToString(value),
+            value => StringToActionStatus(value));
 
         modelBuilder.Entity<Player>(entity =>
         {
@@ -93,6 +99,51 @@ public class AppDbContext : DbContext
                 .HasForeignKey(city => city.PlayerId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        modelBuilder.Entity<GameAction>(entity =>
+        {
+            entity.ToTable("actions");
+
+            entity.HasKey(action => action.Id);
+
+            entity.Property(action => action.Id).HasColumnName("id");
+            entity.Property(action => action.CityId).HasColumnName("city_id");
+            entity.Property(action => action.Type)
+                .HasColumnName("type")
+                .HasMaxLength(32)
+                .IsRequired();
+            entity.Property(action => action.Payload)
+                .HasColumnName("payload")
+                .HasColumnType("jsonb")
+                .IsRequired();
+            entity.Property(action => action.Status)
+                .HasColumnName("status")
+                .HasMaxLength(16)
+                .HasConversion(actionStatusConverter)
+                .IsRequired();
+            entity.Property(action => action.SubmittedAtTick)
+                .HasColumnName("submitted_at_tick")
+                .IsRequired();
+            entity.Property(action => action.ReadyAtTick)
+                .HasColumnName("ready_at_tick");
+            entity.Property(action => action.DurationTicks)
+                .HasColumnName("duration_ticks")
+                .IsRequired();
+            entity.Property(action => action.CreatedAt)
+                .HasColumnName("created_at")
+                .IsRequired();
+            entity.Property(action => action.UpdatedAt)
+                .HasColumnName("updated_at")
+                .IsRequired();
+
+            entity.HasIndex(action => new { action.Status, action.ReadyAtTick });
+            entity.HasIndex(action => new { action.CityId, action.Status });
+
+            entity.HasOne(action => action.City)
+                .WithMany(city => city.Actions)
+                .HasForeignKey(action => action.CityId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 
     public override int SaveChanges()
@@ -136,5 +187,36 @@ public class AppDbContext : DbContext
                 entry.Entity.UpdatedAt = utcNow;
             }
         }
+
+        foreach (var entry in ChangeTracker.Entries<GameAction>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = utcNow;
+                entry.Entity.UpdatedAt = utcNow;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = utcNow;
+            }
+        }
     }
+
+    private static string ActionStatusToString(ActionStatus status) => status switch
+    {
+        ActionStatus.Queued => "queued",
+        ActionStatus.InProgress => "in_progress",
+        ActionStatus.Done => "done",
+        ActionStatus.Failed => "failed",
+        _ => "queued",
+    };
+
+    private static ActionStatus StringToActionStatus(string status) => status switch
+    {
+        "queued" => ActionStatus.Queued,
+        "in_progress" => ActionStatus.InProgress,
+        "done" => ActionStatus.Done,
+        "failed" => ActionStatus.Failed,
+        _ => ActionStatus.Queued,
+    };
 }

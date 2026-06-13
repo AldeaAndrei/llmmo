@@ -14,3 +14,4 @@ public class Player
 
     public ICollection<City> Cities { get; set; } = new List<City>();
 }
+

@@ -27,4 +27,6 @@ public class City
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    public ICollection<GameAction> Actions { get; set; } = new List<GameAction>();
 }
