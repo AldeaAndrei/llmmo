@@ -46,6 +46,42 @@ public static class ActionPayloadHelper
         return property.TryGetInt32(out var count) ? count : defaultCount;
     }
 
+    public static Guid? GetTargetCityId(JsonElement payload)
+    {
+        if (payload.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        if (!payload.TryGetProperty("targetCityId", out var property))
+        {
+            return null;
+        }
+
+        return property.TryGetGuid(out var cityId) ? cityId : null;
+    }
+
+    public static (int X, int Y)? GetTargetCoordinates(JsonElement payload)
+    {
+        if (payload.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        if (!payload.TryGetProperty("targetX", out var xProperty)
+            || !payload.TryGetProperty("targetY", out var yProperty))
+        {
+            return null;
+        }
+
+        if (!xProperty.TryGetInt32(out var x) || !yProperty.TryGetInt32(out var y))
+        {
+            return null;
+        }
+
+        return (x, y);
+    }
+
     public static BuildingUpgradeCostDto? GetDeducted(JsonElement payload)
     {
         if (payload.ValueKind != JsonValueKind.Object)

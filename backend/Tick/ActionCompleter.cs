@@ -58,6 +58,12 @@ public class ActionCompleter
             return;
         }
 
+        if (action.Type.Equals("attack", StringComparison.OrdinalIgnoreCase)
+            || action.Type.Equals("scout", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         throw new InvalidOperationException($"Unsupported action type: {action.Type}");
     }
 

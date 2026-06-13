@@ -35,7 +35,7 @@ public class ActionSubmissionService
 
         if (!ActionDurations.IsAllowedType(normalizedType))
         {
-            return (null, "Type must be one of: upgrade, train.");
+            return (null, "Type must be one of: upgrade, train, attack, scout.");
         }
 
         var city = await _db.Cities
@@ -78,12 +78,32 @@ public class ActionSubmissionService
                 return (null, upgradeResult);
             }
         }
-        else
+        else if (ActionDurations.IsTrainSlotType(normalizedType))
         {
             var trainResult = ValidateTrain(city, buildingType, payloadElement, out cost, out payloadJson);
             if (trainResult is not null)
             {
                 return (null, trainResult);
+            }
+        }
+        else if (ActionDurations.IsAttackSlotType(normalizedType))
+        {
+            var attackResult = await ValidateAttackAsync(
+                city, playerId, payloadElement, cancellationToken);
+            if (attackResult.Error is not null)
+            {
+                return (null, attackResult.Error);
+            }
+
+            cost = attackResult.Cost;
+            payloadJson = attackResult.PayloadJson;
+        }
+        else
+        {
+            var scoutResult = ValidateScout(payloadElement, out cost, out payloadJson);
+            if (scoutResult is not null)
+            {
+                return (null, scoutResult);
             }
         }
 
@@ -135,6 +155,18 @@ public class ActionSubmissionService
             && inProgressTypes.Any(type => ActionDurations.IsTrainSlotType(type)))
         {
             return "Training is already in progress for this city.";
+        }
+
+        if (ActionDurations.IsAttackSlotType(normalizedType)
+            && inProgressTypes.Any(type => ActionDurations.IsAttackSlotType(type)))
+        {
+            return "An attack is already in progress for this city.";
+        }
+
+        if (ActionDurations.IsScoutSlotType(normalizedType)
+            && inProgressTypes.Any(type => ActionDurations.IsScoutSlotType(type)))
+        {
+            return "Scouting is already in progress for this city.";
         }
 
         return null;
@@ -216,5 +248,88 @@ public class ActionSubmissionService
         });
 
         return null;
+    }
+
+    private async Task<ActionValidationResult> ValidateAttackAsync(
+        City city,
+        Guid playerId,
+        JsonElement payloadElement,
+        CancellationToken cancellationToken)
+    {
+        var cost = new BuildingUpgradeCost(0, 0, 0, 0);
+
+        var targetCityId = ActionPayloadHelper.GetTargetCityId(payloadElement);
+        if (targetCityId is null || targetCityId == Guid.Empty)
+        {
+            return ActionValidationResult.Fail("Payload targetCityId is required.");
+        }
+
+        var targetCity = await _db.Cities.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == targetCityId.Value, cancellationToken);
+
+        if (targetCity is null)
+        {
+            return ActionValidationResult.Fail("Target city not found.");
+        }
+
+        if (targetCity.PlayerId == playerId)
+        {
+            return ActionValidationResult.Fail("Cannot attack your own city.");
+        }
+
+        if (city.TroopCount <= 0)
+        {
+            return ActionValidationResult.Fail("No troops available to attack.");
+        }
+
+        var payloadJson = ActionPayloadHelper.SerializePayload(new
+        {
+            targetCityId = targetCityId.Value,
+            deducted = new { cost.Wood, cost.Stone, cost.Gold, cost.Food },
+        });
+
+        return ActionValidationResult.Ok(cost, payloadJson);
+    }
+
+    private static string? ValidateScout(
+        JsonElement payloadElement,
+        out BuildingUpgradeCost cost,
+        out string payloadJson)
+    {
+        cost = new BuildingUpgradeCost(0, 0, 0, 0);
+        payloadJson = "{}";
+
+        var target = ActionPayloadHelper.GetTargetCoordinates(payloadElement);
+        if (target is null)
+        {
+            return "Payload targetX and targetY are required.";
+        }
+
+        var (targetX, targetY) = target.Value;
+        if (targetX < 0 || targetY < 0)
+        {
+            return "Target coordinates must be non-negative.";
+        }
+
+        payloadJson = ActionPayloadHelper.SerializePayload(new
+        {
+            targetX,
+            targetY,
+            deducted = new { cost.Wood, cost.Stone, cost.Gold, cost.Food },
+        });
+
+        return null;
+    }
+
+    private record ActionValidationResult(
+        string? Error,
+        BuildingUpgradeCost Cost,
+        string PayloadJson)
+    {
+        public static ActionValidationResult Fail(string error) =>
+            new(error, new BuildingUpgradeCost(0, 0, 0, 0), "{}");
+
+        public static ActionValidationResult Ok(BuildingUpgradeCost cost, string payloadJson) =>
+            new(null, cost, payloadJson);
     }
 }

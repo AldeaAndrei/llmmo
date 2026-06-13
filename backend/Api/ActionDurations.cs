@@ -6,6 +6,8 @@ public static class ActionDurations
     {
         ["upgrade"] = 3,
         ["train"] = 1,
+        ["attack"] = 1,
+        ["scout"] = 1,
     };
 
     public static bool IsAllowedType(string type) => TicksByType.ContainsKey(type);
@@ -17,4 +19,10 @@ public static class ActionDurations
 
     public static bool IsTrainSlotType(string type) =>
         type.Equals("train", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsAttackSlotType(string type) =>
+        type.Equals("attack", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsScoutSlotType(string type) =>
+        type.Equals("scout", StringComparison.OrdinalIgnoreCase);
 }
