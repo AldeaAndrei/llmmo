@@ -2,7 +2,8 @@
   "name": "llmmo",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n backend,frontend -c blue,green \"dotnet watch run --project backend\" \"npm run dev --prefix frontend\""
+    "dev": "concurrently -n backend,frontend -c blue,green \"dotnet watch run --project backend\" \"npm run dev --prefix frontend\"",
+    "world:setup": "dotnet run --project backend/WorldSetup"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
