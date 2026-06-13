@@ -5,6 +5,7 @@ public static class ActionDurations
     private static readonly Dictionary<string, int> TicksByType = new(StringComparer.OrdinalIgnoreCase)
     {
         ["build"] = 3,
+        ["upgrade"] = 3,
         ["train"] = 1,
         ["attack"] = 1,
         ["scout"] = 1,

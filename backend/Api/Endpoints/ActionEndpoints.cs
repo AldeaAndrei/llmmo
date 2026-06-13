@@ -71,7 +71,7 @@ public static class ActionEndpoints
 
         if (!ActionDurations.IsAllowedType(request.Type))
         {
-            return Results.BadRequest(new { error = "Type must be one of: build, train, attack, scout." });
+            return Results.BadRequest(new { error = "Type must be one of: build, upgrade, train, attack, scout." });
         }
 
         var city = await db.Cities.AsNoTracking()

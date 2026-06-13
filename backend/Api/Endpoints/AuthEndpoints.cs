@@ -1,3 +1,4 @@
+using llmmo.Api.Buildings;
 using llmmo.Api;
 using llmmo.Api.Dtos;
 using llmmo.Auth;
@@ -90,6 +91,7 @@ public static class AuthEndpoints
         db.Users.Add(user);
         db.Players.Add(player);
         db.Cities.Add(city);
+        db.Buildings.AddRange(BuildingSetup.CreateDefaults(cityId));
 
         try
         {

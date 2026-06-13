@@ -23,11 +23,12 @@ public static class CityEndpoints
 
         var cities = await db.Cities
             .AsNoTracking()
+            .Include(city => city.Buildings)
             .Where(city => city.PlayerId == auth.PlayerId)
             .OrderBy(city => city.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(cities.Select(CityMapper.ToFullDto));
+        return Results.Ok(cities.Select(city => CityMapper.ToFullDto(city)));
     }
 
     private static async Task<IResult> GetCity(

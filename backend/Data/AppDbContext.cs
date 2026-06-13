@@ -23,6 +23,8 @@ public class AppDbContext : DbContext
 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
+    public DbSet<Building> Buildings => Set<Building>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var playerTypeConverter = new ValueConverter<PlayerType, string>(
@@ -226,6 +228,37 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<Building>(entity =>
+        {
+            entity.ToTable("buildings");
+
+            entity.HasKey(building => building.Id);
+
+            entity.Property(building => building.Id).HasColumnName("id");
+            entity.Property(building => building.CityId).HasColumnName("city_id");
+            entity.Property(building => building.Type)
+                .HasColumnName("type")
+                .HasMaxLength(32)
+                .IsRequired();
+            entity.Property(building => building.Level)
+                .HasColumnName("level")
+                .HasDefaultValue(1)
+                .IsRequired();
+            entity.Property(building => building.CreatedAt)
+                .HasColumnName("created_at")
+                .IsRequired();
+            entity.Property(building => building.UpdatedAt)
+                .HasColumnName("updated_at")
+                .IsRequired();
+
+            entity.HasIndex(building => new { building.CityId, building.Type }).IsUnique();
+
+            entity.HasOne(building => building.City)
+                .WithMany(city => city.Buildings)
+                .HasForeignKey(building => building.CityId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<WorldState>(entity =>
         {
             entity.ToTable("world_state");
@@ -319,6 +352,19 @@ public class AppDbContext : DbContext
         }
 
         foreach (var entry in ChangeTracker.Entries<GameAction>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = utcNow;
+                entry.Entity.UpdatedAt = utcNow;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<Building>())
         {
             if (entry.State == EntityState.Added)
             {

@@ -11,6 +11,7 @@ public record CityFullDto(
     int Gold,
     int Food,
     int TroopCount,
+    IReadOnlyList<BuildingDto> Buildings,
     DateTime CreatedAt,
     DateTime UpdatedAt);
 

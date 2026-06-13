@@ -1,4 +1,5 @@
 using llmmo.Api;
+using llmmo.Api.Buildings;
 using llmmo.Api.Dtos;
 using llmmo.Auth;
 using llmmo.Data;
@@ -85,6 +86,7 @@ public class AgentManagementService
 
         _db.Players.Add(player);
         _db.Cities.Add(city);
+        _db.Buildings.AddRange(BuildingSetup.CreateDefaults(cityId));
         _db.ApiKeys.Add(keyEntity);
 
         try

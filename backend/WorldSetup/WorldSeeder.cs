@@ -1,3 +1,4 @@
+using llmmo.Api.Buildings;
 using llmmo.Data;
 using llmmo.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -58,6 +59,7 @@ public static class WorldSeeder
 
             db.Players.Add(player);
             db.Cities.Add(city);
+            db.Buildings.AddRange(BuildingSetup.CreateDefaults(cityId));
 
             Console.WriteLine(
                 $"  {playerName,-16} ({(playerType == PlayerType.Human ? "human" : "llm"),-5}) " +
@@ -71,6 +73,7 @@ public static class WorldSeeder
     private static async Task ResetWorldAsync(AppDbContext db, CancellationToken cancellationToken)
     {
         await db.Actions.ExecuteDeleteAsync(cancellationToken);
+        await db.Buildings.ExecuteDeleteAsync(cancellationToken);
         await db.Cities.ExecuteDeleteAsync(cancellationToken);
         await db.Players.ExecuteDeleteAsync(cancellationToken);
 

@@ -4,7 +4,7 @@ import { tileId } from '@/lib/map'
 
 const DEFAULT_SELECTION = {
   map: { type: 'tile', id: tileId(50, 50) },
-  city: { type: 'building', id: 'slot-1' },
+  city: { type: 'building', id: 'gold_mine' },
 }
 
 const GameUIContext = createContext(null)
