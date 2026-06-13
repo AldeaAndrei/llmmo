@@ -1,8 +1,11 @@
+import { GameUIProvider } from '@/context/GameUIContext'
+import AppShell from '@/components/layout/AppShell'
+
 function App() {
   return (
-    <main className="app">
-      <h1>LLMMO</h1>
-    </main>
+    <GameUIProvider>
+      <AppShell />
+    </GameUIProvider>
   )
 }
 
