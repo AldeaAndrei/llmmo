@@ -1,6 +1,5 @@
 export const MAP_SIZE = 100
 export const CELL_SIZE = 20
-export const HOME_TILE = { x: 50, y: 50 }
 
 export function tileId(x, y) {
   return `${x},${y}`
@@ -11,6 +10,20 @@ export function parseTileId(id) {
   return { x, y }
 }
 
-export function isHomeTile(x, y) {
-  return x === HOME_TILE.x && y === HOME_TILE.y
+export function findCityAt(cities, x, y) {
+  return cities.find((city) => city.x === x && city.y === y) ?? null
+}
+
+export function findFreeTile(mapCities) {
+  const occupied = new Set(mapCities.map((city) => tileId(city.x, city.y)))
+
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const x = Math.floor(Math.random() * MAP_SIZE)
+    const y = Math.floor(Math.random() * MAP_SIZE)
+    if (!occupied.has(tileId(x, y))) {
+      return { x, y }
+    }
+  }
+
+  throw new Error('No free tiles on the map')
 }

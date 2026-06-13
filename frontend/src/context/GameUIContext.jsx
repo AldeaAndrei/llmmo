@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 
-import { HOME_TILE, tileId } from '@/lib/map'
+import { tileId } from '@/lib/map'
 
 const DEFAULT_SELECTION = {
-  map: { type: 'tile', id: tileId(HOME_TILE.x, HOME_TILE.y) },
+  map: { type: 'tile', id: tileId(50, 50) },
   city: { type: 'building', id: 'slot-1' },
 }
 

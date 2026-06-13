@@ -62,6 +62,11 @@ public static class PlayerEndpoints
             X = x,
             Y = y,
             Name = cityName,
+            Wood = 500,
+            Stone = 500,
+            Gold = 250,
+            Food = 400,
+            TroopCount = 25,
         };
 
         db.Players.Add(player);
