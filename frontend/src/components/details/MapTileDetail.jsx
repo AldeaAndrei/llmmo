@@ -1,43 +1,48 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import CityActionsList from '@/components/details/CityActionsList'
+import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { api } from '@/lib/api'
 import { findCityAt, parseTileId } from '@/lib/map'
 
 function MapTileDetail({ selection }) {
   const { x, y } = parseTileId(selection.id)
-  const { mapCities, playerId, primaryCity, submitAction, refreshCities } = useGameData()
-  const [cityDetail, setCityDetail] = useState(null)
+  const { isAuthenticated } = useAuth()
+  const { mapCities, playerId, primaryCity, cities, submitAction, refreshCities } =
+    useGameData()
+  const [cityPublic, setCityPublic] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const cityAtTile = findCityAt(mapCities, x, y)
   const isOwnCity = cityAtTile && playerId && cityAtTile.playerId === playerId
+  const ownCityFull = isOwnCity
+    ? cities.find((city) => city.id === cityAtTile.id) ?? primaryCity
+    : null
 
   useEffect(() => {
     if (!cityAtTile) {
-      setCityDetail(null)
+      setCityPublic(null)
+      return
+    }
+
+    if (isOwnCity) {
+      setCityPublic(null)
+      refreshCities()
       return
     }
 
     let cancelled = false
     setLoadingDetail(true)
 
-    const isOwn = playerId && cityAtTile.playerId === playerId
-
     api
-      .getCity(cityAtTile.id, isOwn ? playerId : undefined)
+      .getCityPublic(cityAtTile.id)
       .then((detail) => {
-        if (!cancelled) {
-          setCityDetail(detail)
-          if (isOwn) {
-            refreshCities(playerId)
-          }
-        }
+        if (!cancelled) setCityPublic(detail)
       })
       .catch(() => {
-        if (!cancelled) setCityDetail(null)
+        if (!cancelled) setCityPublic(null)
       })
       .finally(() => {
         if (!cancelled) setLoadingDetail(false)
@@ -46,7 +51,7 @@ function MapTileDetail({ selection }) {
     return () => {
       cancelled = true
     }
-  }, [cityAtTile, playerId, refreshCities])
+  }, [cityAtTile, isOwnCity, refreshCities])
 
   const handleScout = async () => {
     setSubmitting(true)
@@ -81,17 +86,26 @@ function MapTileDetail({ selection }) {
         <p className="text-sm text-muted-foreground">Loading city…</p>
       )}
 
-      {cityDetail && (
+      {ownCityFull && (
         <div className="space-y-1 text-sm">
-          <p className="font-medium">{cityDetail.name}</p>
+          <p className="font-medium">{ownCityFull.name}</p>
           <p className="text-muted-foreground">
-            Troops {cityDetail.troopCount} · Wood {cityDetail.wood} · Stone{' '}
-            {cityDetail.stone} · Gold {cityDetail.gold} · Food {cityDetail.food}
+            Troops {ownCityFull.troopCount} · Wood {ownCityFull.wood} · Stone{' '}
+            {ownCityFull.stone} · Gold {ownCityFull.gold} · Food {ownCityFull.food}
           </p>
         </div>
       )}
 
-      {!cityAtTile && primaryCity && (
+      {cityPublic && !isOwnCity && (
+        <div className="space-y-1 text-sm">
+          <p className="font-medium">{cityPublic.name}</p>
+          <p className="text-muted-foreground">
+            Enemy city — resources hidden until scouted in-game.
+          </p>
+        </div>
+      )}
+
+      {!cityAtTile && isAuthenticated && primaryCity && (
         <Button
           variant="outline"
           disabled={submitting}
@@ -101,7 +115,7 @@ function MapTileDetail({ selection }) {
         </Button>
       )}
 
-      {cityAtTile && !isOwnCity && primaryCity && (
+      {cityAtTile && !isOwnCity && isAuthenticated && primaryCity && (
         <Button
           variant="outline"
           disabled={submitting}
@@ -118,8 +132,9 @@ function MapTileDetail({ selection }) {
       )}
 
       <CityActionsList
-        cityId={cityAtTile?.id ?? primaryCity?.id}
-        title={cityAtTile ? 'City actions' : 'Your city actions'}
+        cityId={isOwnCity ? cityAtTile?.id : primaryCity?.id}
+        title={isOwnCity ? 'City actions' : 'Your city actions'}
+        ownedOnly
       />
     </div>
   )

@@ -19,6 +19,10 @@ public class AppDbContext : DbContext
 
     public DbSet<WorldState> WorldState => Set<WorldState>();
 
+    public DbSet<User> Users => Set<User>();
+
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var playerTypeConverter = new ValueConverter<PlayerType, string>(
@@ -36,6 +40,7 @@ public class AppDbContext : DbContext
             entity.HasKey(player => player.Id);
 
             entity.Property(player => player.Id).HasColumnName("id");
+            entity.Property(player => player.OwnerUserId).HasColumnName("owner_user_id");
             entity.Property(player => player.Name)
                 .HasColumnName("name")
                 .HasMaxLength(30)
@@ -51,6 +56,74 @@ public class AppDbContext : DbContext
             entity.Property(player => player.UpdatedAt)
                 .HasColumnName("updated_at")
                 .IsRequired();
+
+            entity.HasOne(player => player.OwnerUser)
+                .WithMany(user => user.Players)
+                .HasForeignKey(player => player.OwnerUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("users");
+
+            entity.HasKey(user => user.Id);
+
+            entity.Property(user => user.Id).HasColumnName("id");
+            entity.Property(user => user.Email)
+                .HasColumnName("email")
+                .HasMaxLength(256)
+                .IsRequired();
+            entity.Property(user => user.PasswordHash)
+                .HasColumnName("password_hash")
+                .IsRequired();
+            entity.Property(user => user.CreatedAt)
+                .HasColumnName("created_at")
+                .IsRequired();
+            entity.Property(user => user.UpdatedAt)
+                .HasColumnName("updated_at")
+                .IsRequired();
+
+            entity.HasIndex(user => user.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<ApiKey>(entity =>
+        {
+            entity.ToTable("api_keys");
+
+            entity.HasKey(key => key.Id);
+
+            entity.Property(key => key.Id).HasColumnName("id");
+            entity.Property(key => key.PlayerId).HasColumnName("player_id");
+            entity.Property(key => key.KeyHash)
+                .HasColumnName("key_hash")
+                .IsRequired();
+            entity.Property(key => key.KeyPrefix)
+                .HasColumnName("key_prefix")
+                .HasMaxLength(16)
+                .IsRequired();
+            entity.Property(key => key.Label)
+                .HasColumnName("label")
+                .HasMaxLength(64)
+                .IsRequired();
+            entity.Property(key => key.CreatedAt)
+                .HasColumnName("created_at")
+                .IsRequired();
+            entity.Property(key => key.UpdatedAt)
+                .HasColumnName("updated_at")
+                .IsRequired();
+            entity.Property(key => key.RevokedAt)
+                .HasColumnName("revoked_at");
+            entity.Property(key => key.LastUsedAt)
+                .HasColumnName("last_used_at");
+
+            entity.HasIndex(key => key.PlayerId);
+            entity.HasIndex(key => key.KeyPrefix).IsUnique();
+
+            entity.HasOne(key => key.Player)
+                .WithMany(player => player.ApiKeys)
+                .HasForeignKey(key => key.PlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<City>(entity =>
@@ -192,6 +265,32 @@ public class AppDbContext : DbContext
     private void ApplyTimestamps()
     {
         var utcNow = DateTime.UtcNow;
+
+        foreach (var entry in ChangeTracker.Entries<User>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = utcNow;
+                entry.Entity.UpdatedAt = utcNow;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<ApiKey>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = utcNow;
+                entry.Entity.UpdatedAt = utcNow;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = utcNow;
+            }
+        }
 
         foreach (var entry in ChangeTracker.Entries<Player>())
         {

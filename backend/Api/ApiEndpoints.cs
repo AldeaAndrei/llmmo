@@ -6,11 +6,10 @@ public static class ApiEndpoints
 {
     public static WebApplication MapApiEndpoints(this WebApplication app)
     {
-        // TODO: auth — UseAuthentication() / UseAuthorization()
-
         var api = app.MapGroup("/api/v1");
 
-        api.MapPlayerEndpoints();
+        api.MapAuthEndpoints();
+        api.MapAgentEndpoints();
         api.MapCityEndpoints();
         api.MapMapEndpoints();
         api.MapActionEndpoints();

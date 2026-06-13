@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -8,14 +8,28 @@ export class ApiError extends Error {
   }
 }
 
+let unauthorizedHandler = null
+
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = handler
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
     },
     ...options,
   })
+
+  const isAuthAttempt =
+    path === '/auth/login' || path === '/auth/register'
+
+  if (response.status === 401 && unauthorizedHandler && !isAuthAttempt) {
+    unauthorizedHandler()
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}))
@@ -30,15 +44,37 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  register: (body) =>
+    request('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
+
+  login: (body) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+
+  logout: () => request('/auth/logout', { method: 'POST' }),
+
+  getMe: () => request('/auth/me'),
+
+  listAgents: () => request('/auth/agents'),
+
+  createAgent: (body) =>
+    request('/auth/agents', { method: 'POST', body: JSON.stringify(body) }),
+
+  getAgent: (playerId) => request(`/auth/agents/${playerId}`),
+
+  reissueAgentKey: (playerId) =>
+    request(`/auth/agents/${playerId}/keys`, { method: 'POST' }),
+
+  revokeAgentKey: (playerId) =>
+    request(`/auth/agents/${playerId}/keys`, { method: 'DELETE' }),
+
+  deleteAgent: (playerId) =>
+    request(`/auth/agents/${playerId}`, { method: 'DELETE' }),
+
   getMap: () => request('/map'),
 
-  getCities: (playerId) => request(`/cities?player_id=${playerId}`),
+  getMyCities: () => request('/cities/me'),
 
-  getCity: (cityId, playerId) =>
-    request(`/cities/${cityId}${playerId ? `?player_id=${playerId}` : ''}`),
-
-  createPlayer: (body) =>
-    request('/players', { method: 'POST', body: JSON.stringify(body) }),
+  getCityPublic: (cityId) => request(`/cities/${cityId}`),
 
   createAction: (body) =>
     request('/actions', { method: 'POST', body: JSON.stringify(body) }),

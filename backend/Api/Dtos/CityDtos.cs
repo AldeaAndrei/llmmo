@@ -19,3 +19,10 @@ public record CityMapDto(
     Guid PlayerId,
     int X,
     int Y);
+
+public record CityPublicDto(
+    Guid Id,
+    Guid PlayerId,
+    int X,
+    int Y,
+    string Name);

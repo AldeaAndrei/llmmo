@@ -1,4 +1,6 @@
 import { useCityActions } from '@/hooks/useCityActions'
+import { useAuth } from '@/context/AuthContext'
+import { useGameData } from '@/context/GameDataContext'
 
 function formatPayload(payload) {
   if (!payload || typeof payload !== 'object') {
@@ -14,10 +16,25 @@ function statusLabel(status) {
   return status.replace('_', ' ')
 }
 
-function CityActionsList({ cityId, title = 'Actions' }) {
-  const { actions, loading } = useCityActions(cityId)
+function CityActionsList({ cityId, title = 'Actions', ownedOnly = false }) {
+  const { isAuthenticated, playerId } = useAuth()
+  const { cities } = useGameData()
+  const isOwned =
+    !ownedOnly ||
+    (cityId && cities.some((city) => city.id === cityId && city.playerId === playerId))
 
-  if (!cityId) {
+  const { actions, loading } = useCityActions(isOwned ? cityId : null)
+
+  if (!isAuthenticated) {
+    return (
+      <div className="space-y-2 border-t pt-4">
+        <h3 className="text-sm font-medium">{title}</h3>
+        <p className="text-sm text-muted-foreground">Log in to view actions.</p>
+      </div>
+    )
+  }
+
+  if (!cityId || !isOwned) {
     return null
   }
 

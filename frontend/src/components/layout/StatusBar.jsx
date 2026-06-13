@@ -1,8 +1,18 @@
 import { Separator } from '@/components/ui/separator'
+import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 
 function StatusBar() {
-  const { primaryCity, loading, needsJoin } = useGameData()
+  const { isAuthenticated } = useAuth()
+  const { primaryCity, loading } = useGameData()
+
+  if (!isAuthenticated) {
+    return (
+      <div className="border-b px-4 py-2 text-sm text-muted-foreground">
+        Log in to play
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -12,10 +22,10 @@ function StatusBar() {
     )
   }
 
-  if (needsJoin || !primaryCity) {
+  if (!primaryCity) {
     return (
       <div className="border-b px-4 py-2 text-sm text-muted-foreground">
-        Join the world to see your resources
+        No city found
       </div>
     )
   }

@@ -19,6 +19,13 @@ public static class CityMapper
         city.CreatedAt,
         city.UpdatedAt);
 
+    public static CityPublicDto ToPublicDto(City city) => new(
+        city.Id,
+        city.PlayerId,
+        city.X,
+        city.Y,
+        city.Name);
+
     public static CityMapDto ToMapDto(City city) => new(
         city.Id,
         city.PlayerId,

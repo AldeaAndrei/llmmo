@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { useGameUI } from '@/context/GameUIContext'
 
@@ -8,8 +9,17 @@ const CITY_SLOTS = Array.from({ length: 8 }, (_, index) => ({
 }))
 
 function CityGrid() {
+  const { isAuthenticated } = useAuth()
   const { selection, setSelection } = useGameUI()
-  const { primaryCity, loading, needsJoin } = useGameData()
+  const { primaryCity, loading } = useGameData()
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">
+        Log in to view your city
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -19,10 +29,10 @@ function CityGrid() {
     )
   }
 
-  if (needsJoin || !primaryCity) {
+  if (!primaryCity) {
     return (
       <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">
-        Join the world to view your city
+        No city found
       </div>
     )
   }

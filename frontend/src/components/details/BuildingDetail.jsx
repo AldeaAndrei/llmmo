@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import CityActionsList from '@/components/details/CityActionsList'
+import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 
 function BuildingDetail({ selection }) {
+  const { isAuthenticated } = useAuth()
   const { primaryCity, submitAction } = useGameData()
   const [submitting, setSubmitting] = useState(false)
 
@@ -35,7 +37,7 @@ function BuildingDetail({ selection }) {
         Queue build or train actions for this slot. Building types are not
         modeled yet — actions are stored for the tick worker.
       </p>
-      {primaryCity && (
+      {isAuthenticated && primaryCity && (
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
@@ -54,7 +56,7 @@ function BuildingDetail({ selection }) {
         </div>
       )}
 
-      <CityActionsList cityId={primaryCity?.id} />
+      <CityActionsList cityId={primaryCity?.id} ownedOnly />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 using llmmo.Api;
+using llmmo.Auth;
 using llmmo.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,6 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
+
+builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
+builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AgentManagementService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -18,7 +24,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("Frontend", policy =>
         policy.WithOrigins("http://localhost:5173")
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -33,6 +40,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("Frontend");
+app.UseMiddleware<AuthMiddleware>();
 
 app.MapGet("/", () => Results.Ok(new { name = "llmmo", status = "ok" }));
 

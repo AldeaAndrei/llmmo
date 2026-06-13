@@ -4,11 +4,11 @@ import { useGameUI } from '@/context/GameUIContext'
 import { tileId } from '@/lib/map'
 
 function GameBootstrap() {
-  const { primaryCity, needsJoin } = useGameData()
+  const { primaryCity, isAuthenticated } = useGameData()
   const { setSelection, activeTab } = useGameUI()
 
   useEffect(() => {
-    if (needsJoin || !primaryCity) return
+    if (!isAuthenticated || !primaryCity) return
 
     if (activeTab === 'map') {
       setSelection({ type: 'tile', id: tileId(primaryCity.x, primaryCity.y) })
@@ -17,7 +17,7 @@ function GameBootstrap() {
     primaryCity?.id,
     primaryCity?.x,
     primaryCity?.y,
-    needsJoin,
+    isAuthenticated,
     setSelection,
     activeTab,
   ])

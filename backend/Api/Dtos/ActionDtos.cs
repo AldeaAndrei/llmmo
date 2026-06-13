@@ -3,7 +3,6 @@ using System.Text.Json;
 namespace llmmo.Api.Dtos;
 
 public record CreateActionRequest(
-    Guid PlayerId,
     Guid CityId,
     string Type,
     object Payload);

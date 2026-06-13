@@ -1,5 +1,6 @@
 using System.Text.Json;
 using llmmo.Api.Dtos;
+using llmmo.Auth;
 using llmmo.Data;
 using llmmo.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -10,27 +11,35 @@ public static class ActionEndpoints
 {
     public static RouteGroupBuilder MapActionEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("/actions", ListActions);
-        group.MapPost("/actions", CreateAction);
+        group.MapGet("/actions", ListActions).RequireAuth();
+        group.MapPost("/actions", CreateAction).RequireAuth();
         return group;
     }
 
     private static async Task<IResult> ListActions(
         Guid? city_id,
+        HttpContext httpContext,
         AppDbContext db,
         CancellationToken cancellationToken)
     {
-        // TODO: auth — resolve playerId from session; reject unauthenticated
+        var auth = httpContext.GetPlayerAuth()!;
 
         if (city_id is null || city_id == Guid.Empty)
         {
             return Results.BadRequest(new { error = "city_id query parameter is required." });
         }
 
-        var cityExists = await db.Cities.AnyAsync(city => city.Id == city_id.Value, cancellationToken);
-        if (!cityExists)
+        var city = await db.Cities.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == city_id.Value, cancellationToken);
+
+        if (city is null)
         {
             return Results.NotFound(new { error = "City not found." });
+        }
+
+        if (city.PlayerId != auth.PlayerId)
+        {
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
 
         var actions = await db.Actions
@@ -44,15 +53,15 @@ public static class ActionEndpoints
 
     private static async Task<IResult> CreateAction(
         CreateActionRequest request,
+        HttpContext httpContext,
         AppDbContext db,
         CancellationToken cancellationToken)
     {
-        // TODO: auth — resolve playerId from session; reject unauthenticated
-        // TODO: auth — verify city.player_id == authenticated playerId
+        var auth = httpContext.GetPlayerAuth()!;
 
-        if (request.PlayerId == Guid.Empty || request.CityId == Guid.Empty)
+        if (request.CityId == Guid.Empty)
         {
-            return Results.BadRequest(new { error = "PlayerId and CityId are required." });
+            return Results.BadRequest(new { error = "CityId is required." });
         }
 
         if (string.IsNullOrWhiteSpace(request.Type))
@@ -65,16 +74,17 @@ public static class ActionEndpoints
             return Results.BadRequest(new { error = "Type must be one of: build, train, attack, scout." });
         }
 
-        var cityExists = await db.Cities.AnyAsync(city => city.Id == request.CityId, cancellationToken);
-        if (!cityExists)
+        var city = await db.Cities.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == request.CityId, cancellationToken);
+
+        if (city is null)
         {
             return Results.NotFound(new { error = "City not found." });
         }
 
-        var playerExists = await db.Players.AnyAsync(player => player.Id == request.PlayerId, cancellationToken);
-        if (!playerExists)
+        if (city.PlayerId != auth.PlayerId)
         {
-            return Results.NotFound(new { error = "Player not found." });
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
 
         var worldState = await db.WorldState.AsNoTracking().FirstOrDefaultAsync(state => state.Id == 1, cancellationToken);
@@ -89,7 +99,7 @@ public static class ActionEndpoints
         var action = new GameAction
         {
             Id = Guid.NewGuid(),
-            PlayerId = request.PlayerId,
+            PlayerId = auth.PlayerId,
             CityId = request.CityId,
             Type = normalizedType,
             Payload = payloadJson,

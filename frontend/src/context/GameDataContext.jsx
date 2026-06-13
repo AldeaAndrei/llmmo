@@ -9,33 +9,19 @@ import {
 import { toast } from 'sonner'
 
 import { api } from '@/lib/api'
-import { findFreeTile } from '@/lib/map'
-
-const STORAGE_PLAYER_ID = 'llmmo_player_id'
+import { useAuth } from '@/context/AuthContext'
 
 const GameDataContext = createContext(null)
 
-function readStoredPlayerId() {
-  const params = new URLSearchParams(window.location.search)
-  const urlPlayerId = params.get('playerId')
-  if (urlPlayerId) {
-    localStorage.setItem(STORAGE_PLAYER_ID, urlPlayerId)
-    return urlPlayerId
-  }
-
-  return localStorage.getItem(STORAGE_PLAYER_ID)
-}
-
 export function GameDataProvider({ children }) {
+  const { isAuthenticated, playerId } = useAuth()
   const [mapCities, setMapCities] = useState([])
-  const [playerId, setPlayerId] = useState(readStoredPlayerId)
   const [cities, setCities] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [actionRevision, setActionRevision] = useState(0)
 
   const primaryCity = cities[0] ?? null
-  const needsJoin = !playerId || cities.length === 0
 
   const refreshMap = useCallback(async () => {
     const data = await api.getMap()
@@ -43,11 +29,16 @@ export function GameDataProvider({ children }) {
     return data
   }, [])
 
-  const refreshCities = useCallback(async (id) => {
-    const data = await api.getCities(id)
+  const refreshCities = useCallback(async () => {
+    if (!isAuthenticated) {
+      setCities([])
+      return []
+    }
+
+    const data = await api.getMyCities()
     setCities(data)
     return data
-  }, [])
+  }, [isAuthenticated])
 
   const loadGame = useCallback(async () => {
     setLoading(true)
@@ -55,19 +46,10 @@ export function GameDataProvider({ children }) {
 
     try {
       await refreshMap()
-
-      const storedId = readStoredPlayerId()
-      if (!storedId) {
-        setPlayerId(null)
+      if (isAuthenticated) {
+        await refreshCities()
+      } else {
         setCities([])
-        return
-      }
-
-      setPlayerId(storedId)
-      const playerCities = await refreshCities(storedId)
-      if (playerCities.length === 0) {
-        localStorage.removeItem(STORAGE_PLAYER_ID)
-        setPlayerId(null)
       }
     } catch (err) {
       setError(err.message ?? 'Failed to load game data')
@@ -75,65 +57,38 @@ export function GameDataProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [refreshCities, refreshMap])
+  }, [isAuthenticated, refreshCities, refreshMap])
 
   useEffect(() => {
     loadGame()
-  }, [loadGame])
+  }, [loadGame, isAuthenticated, playerId])
 
   useEffect(() => {
-    if (!playerId) return
+    if (!isAuthenticated) return
 
     const refresh = () => {
-      refreshCities(playerId)
+      refreshCities()
       refreshMap()
     }
 
     window.addEventListener('focus', refresh)
     return () => window.removeEventListener('focus', refresh)
-  }, [playerId, refreshCities, refreshMap])
-
-  const joinGame = useCallback(
-    async (name, playerType = 'human') => {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const map = mapCities.length > 0 ? mapCities : await refreshMap()
-        const { x, y } = findFreeTile(map)
-        const created = await api.createPlayer({ name, playerType, x, y })
-
-        localStorage.setItem(STORAGE_PLAYER_ID, created.playerId)
-        setPlayerId(created.playerId)
-        await refreshMap()
-        await refreshCities(created.playerId)
-        toast.success(`Welcome, ${created.name}`)
-      } catch (err) {
-        setError(err.message ?? 'Failed to join')
-        toast.error(err.message ?? 'Failed to join')
-        throw err
-      } finally {
-        setLoading(false)
-      }
-    },
-    [mapCities, refreshCities, refreshMap],
-  )
+  }, [isAuthenticated, refreshCities, refreshMap])
 
   const submitAction = useCallback(
     async (type, payload, cityId = primaryCity?.id) => {
-      if (!playerId || !cityId) {
-        toast.error('No city selected')
+      if (!isAuthenticated || !cityId) {
+        toast.error('Log in to queue actions')
         return null
       }
 
       try {
         const action = await api.createAction({
-          playerId,
           cityId,
           type,
           payload,
         })
-        await refreshCities(playerId)
+        await refreshCities()
         setActionRevision((revision) => revision + 1)
         toast.success(`${type} action queued`)
         return action
@@ -142,7 +97,7 @@ export function GameDataProvider({ children }) {
         throw err
       }
     },
-    [playerId, primaryCity, refreshCities],
+    [isAuthenticated, primaryCity, refreshCities],
   )
 
   const value = useMemo(
@@ -153,11 +108,10 @@ export function GameDataProvider({ children }) {
       primaryCity,
       loading,
       error,
-      needsJoin,
+      isAuthenticated,
       actionRevision,
       refreshMap,
       refreshCities,
-      joinGame,
       submitAction,
       reload: loadGame,
     }),
@@ -168,11 +122,10 @@ export function GameDataProvider({ children }) {
       primaryCity,
       loading,
       error,
-      needsJoin,
+      isAuthenticated,
       actionRevision,
       refreshMap,
       refreshCities,
-      joinGame,
       submitAction,
       loadGame,
     ],
