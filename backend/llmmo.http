@@ -1,0 +1,6 @@
+@llmmo_HostAddress = http://localhost:5127
+
+GET {{llmmo_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

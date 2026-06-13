@@ -13,6 +13,7 @@ frontend/dist/
 backend/**/bin/
 backend/**/obj/
 backend/.vs/
+backend/appsettings.Development.json
 
 # Logs
 *.log
