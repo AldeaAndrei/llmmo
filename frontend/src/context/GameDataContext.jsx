@@ -32,6 +32,7 @@ export function GameDataProvider({ children }) {
   const [cities, setCities] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [actionRevision, setActionRevision] = useState(0)
 
   const primaryCity = cities[0] ?? null
   const needsJoin = !playerId || cities.length === 0
@@ -133,6 +134,7 @@ export function GameDataProvider({ children }) {
           payload,
         })
         await refreshCities(playerId)
+        setActionRevision((revision) => revision + 1)
         toast.success(`${type} action queued`)
         return action
       } catch (err) {
@@ -152,6 +154,7 @@ export function GameDataProvider({ children }) {
       loading,
       error,
       needsJoin,
+      actionRevision,
       refreshMap,
       refreshCities,
       joinGame,
@@ -166,6 +169,7 @@ export function GameDataProvider({ children }) {
       loading,
       error,
       needsJoin,
+      actionRevision,
       refreshMap,
       refreshCities,
       joinGame,

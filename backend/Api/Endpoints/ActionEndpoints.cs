@@ -10,8 +10,36 @@ public static class ActionEndpoints
 {
     public static RouteGroupBuilder MapActionEndpoints(this RouteGroupBuilder group)
     {
+        group.MapGet("/actions", ListActions);
         group.MapPost("/actions", CreateAction);
         return group;
+    }
+
+    private static async Task<IResult> ListActions(
+        Guid? city_id,
+        AppDbContext db,
+        CancellationToken cancellationToken)
+    {
+        // TODO: auth — resolve playerId from session; reject unauthenticated
+
+        if (city_id is null || city_id == Guid.Empty)
+        {
+            return Results.BadRequest(new { error = "city_id query parameter is required." });
+        }
+
+        var cityExists = await db.Cities.AnyAsync(city => city.Id == city_id.Value, cancellationToken);
+        if (!cityExists)
+        {
+            return Results.NotFound(new { error = "City not found." });
+        }
+
+        var actions = await db.Actions
+            .AsNoTracking()
+            .Where(action => action.CityId == city_id.Value)
+            .OrderByDescending(action => action.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(actions.Select(ActionMapper.ToListDto));
     }
 
     private static async Task<IResult> CreateAction(
@@ -76,14 +104,6 @@ public static class ActionEndpoints
 
         return Results.Created(
             $"/api/v1/actions/{action.Id}",
-            new ActionCreatedDto(
-                action.Id,
-                action.CityId,
-                action.PlayerId,
-                action.Type,
-                "queued",
-                action.SubmittedAtTick,
-                action.ReadyAtTick,
-                action.DurationTicks));
+            ActionMapper.ToCreatedDto(action));
     }
 }

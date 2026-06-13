@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import CityActionsList from '@/components/details/CityActionsList'
 import { useGameData } from '@/context/GameDataContext'
 
 function BuildingDetail({ selection }) {
@@ -52,6 +53,8 @@ function BuildingDetail({ selection }) {
           </Button>
         </div>
       )}
+
+      <CityActionsList cityId={primaryCity?.id} />
     </div>
   )
 }

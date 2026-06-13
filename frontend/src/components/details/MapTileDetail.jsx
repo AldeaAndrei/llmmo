@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import CityActionsList from '@/components/details/CityActionsList'
 import { useGameData } from '@/context/GameDataContext'
 import { api } from '@/lib/api'
 import { findCityAt, parseTileId } from '@/lib/map'
@@ -115,6 +116,11 @@ function MapTileDetail({ selection }) {
           This is your city. Switch to the City tab to manage buildings.
         </p>
       )}
+
+      <CityActionsList
+        cityId={cityAtTile?.id ?? primaryCity?.id}
+        title={cityAtTile ? 'City actions' : 'Your city actions'}
+      />
     </div>
   )
 }
