@@ -5,7 +5,7 @@ import Footer from '@/components/layout/Footer'
 
 function AppShell() {
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       <Navbar />
       <StatusBar />
       <SplitView />

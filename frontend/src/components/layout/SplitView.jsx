@@ -17,11 +17,11 @@ function SplitView() {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1">
-        <div className="min-h-0 flex-1 md:border-r">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="h-full min-h-0 min-w-0 flex-1 overflow-hidden md:border-r">
           <LeftPanel />
         </div>
-        <aside className="hidden w-[380px] shrink-0 md:block">
+        <aside className="hidden h-full w-[380px] shrink-0 overflow-hidden md:block">
           <DetailPanel />
         </aside>
       </div>
