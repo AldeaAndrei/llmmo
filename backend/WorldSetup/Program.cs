@@ -1,4 +1,5 @@
 using llmmo.Data;
+using llmmo.Entities;
 using llmmo.WorldSetup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -27,11 +28,15 @@ Console.WriteLine();
 await WorldSeeder.RunAsync(db);
 
 var playerCount = await db.Players.CountAsync();
+var llmCount = await db.Players.CountAsync(player => player.PlayerType == PlayerType.Llm);
+var userCount = await db.Users.CountAsync();
 var cityCount = await db.Cities.CountAsync();
-var tick = await db.WorldState.AsNoTracking().Where(state => state.Id == 1).Select(state => state.CurrentTick).FirstAsync();
+var world = await db.WorldState.AsNoTracking().FirstAsync(state => state.Id == 1);
 
 Console.WriteLine();
-Console.WriteLine($"Done. {playerCount} players, {cityCount} cities, tick={tick}.");
+Console.WriteLine(
+    $"Done. {playerCount} players ({llmCount} llm), {userCount} user(s), {cityCount} cities, tick={world.CurrentTick}.");
+Console.WriteLine("Default login: admin@yahoo.com / test1234");
 Console.WriteLine("Try GET http://localhost:5000/api/v1/map");
 
 static string FindBackendDirectory()

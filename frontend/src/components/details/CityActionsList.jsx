@@ -1,6 +1,7 @@
 import { useCityActions } from '@/hooks/useCityActions'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
+import { useWorld } from '@/context/WorldContext'
 
 function formatPayload(payload) {
   if (!payload || typeof payload !== 'object') {
@@ -8,6 +9,7 @@ function formatPayload(payload) {
   }
 
   return Object.entries(payload)
+    .filter(([key]) => key !== 'deducted')
     .map(([key, value]) => `${key}: ${value}`)
     .join(', ')
 }
@@ -16,9 +18,23 @@ function statusLabel(status) {
   return status.replace('_', ' ')
 }
 
+function formatTiming(action, currentTick) {
+  if (action.status === 'in_progress' && action.readyAtTick != null) {
+    const remaining = Math.max(0, action.readyAtTick - currentTick)
+    return `${remaining} tick${remaining === 1 ? '' : 's'} remaining`
+  }
+
+  if (action.status === 'in_progress') {
+    return `${action.durationTicks} tick${action.durationTicks === 1 ? '' : 's'} duration`
+  }
+
+  return `Submitted tick ${action.submittedAtTick}`
+}
+
 function CityActionsList({ cityId, title = 'Actions', ownedOnly = false }) {
   const { isAuthenticated, playerId } = useAuth()
   const { cities } = useGameData()
+  const { currentTick } = useWorld()
   const isOwned =
     !ownedOnly ||
     (cityId && cities.some((city) => city.id === cityId && city.playerId === playerId))
@@ -67,10 +83,7 @@ function CityActionsList({ cityId, title = 'Actions', ownedOnly = false }) {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Tick {action.submittedAtTick}
-                  {action.readyAtTick != null
-                    ? ` → ${action.readyAtTick}`
-                    : ` · ${action.durationTicks} tick${action.durationTicks === 1 ? '' : 's'}`}
+                  {formatTiming(action, currentTick)}
                 </p>
                 {payloadText && (
                   <p className="mt-1 text-xs text-muted-foreground">{payloadText}</p>

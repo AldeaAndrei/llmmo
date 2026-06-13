@@ -12,6 +12,7 @@ public static class ApiEndpoints
         api.MapAgentEndpoints();
         api.MapCityEndpoints();
         api.MapMapEndpoints();
+        api.MapWorldEndpoints();
         api.MapActionEndpoints();
 
         return app;

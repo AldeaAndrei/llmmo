@@ -74,4 +74,17 @@ public static class BuildingCatalog
             def.BaseUpgradeCost.Gold * multiplier,
             def.BaseUpgradeCost.Food * multiplier);
     }
+
+    public static BuildingUpgradeCost TrainCostPerTroop { get; } = new(0, 0, 1, 1);
+
+    public static int TrainCapacityAtLevel(int barracksLevel) => barracksLevel * 4;
+
+    public static BuildingUpgradeCost TrainCostForCount(int count)
+    {
+        return new BuildingUpgradeCost(
+            TrainCostPerTroop.Wood * count,
+            TrainCostPerTroop.Stone * count,
+            TrainCostPerTroop.Gold * count,
+            TrainCostPerTroop.Food * count);
+    }
 }

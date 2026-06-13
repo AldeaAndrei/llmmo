@@ -270,6 +270,9 @@ public class AppDbContext : DbContext
                 .HasColumnName("current_tick")
                 .HasDefaultValue(0)
                 .IsRequired();
+            entity.Property(state => state.LastTickAt)
+                .HasColumnName("last_tick_at")
+                .IsRequired();
             entity.Property(state => state.UpdatedAt)
                 .HasColumnName("updated_at")
                 .IsRequired();
@@ -278,6 +281,7 @@ public class AppDbContext : DbContext
             {
                 Id = 1,
                 CurrentTick = 0,
+                LastTickAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             });
         });

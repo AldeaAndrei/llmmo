@@ -9,4 +9,6 @@ public record BuildingDto(
     int? ProductionPerTick,
     string? ProductionResource,
     bool CanTrainTroops,
-    BuildingUpgradeCostDto? NextUpgradeCost);
+    BuildingUpgradeCostDto? NextUpgradeCost,
+    BuildingUpgradeCostDto? TrainCostPerTroop = null,
+    int? TrainCapacity = null);

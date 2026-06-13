@@ -4,11 +4,11 @@ namespace llmmo.Api;
 
 public static class CitySetup
 {
-    public const int StarterWood = 500;
-    public const int StarterStone = 500;
-    public const int StarterGold = 250;
-    public const int StarterFood = 400;
-    public const int StarterTroops = 25;
+    public const int StarterWood = 50;
+    public const int StarterStone = 50;
+    public const int StarterGold = 2;
+    public const int StarterFood = 20;
+    public const int StarterTroops = 1;
 
     public static string BuildCityName(string playerName)
     {

@@ -6,5 +6,7 @@ public class WorldState
 
     public int CurrentTick { get; set; }
 
+    public DateTime LastTickAt { get; set; }
+
     public DateTime UpdatedAt { get; set; }
 }

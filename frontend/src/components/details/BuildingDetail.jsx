@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import CityActionsList from '@/components/details/CityActionsList'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
+import { useCityActions } from '@/hooks/useCityActions'
 
 function formatCost(cost) {
   if (!cost) return null
@@ -17,11 +18,47 @@ function formatCost(cost) {
 function BuildingDetail({ selection }) {
   const { isAuthenticated } = useAuth()
   const { primaryCity, submitAction } = useGameData()
+  const { actions } = useCityActions(primaryCity?.id)
   const [submitting, setSubmitting] = useState(false)
 
   const building = primaryCity?.buildings?.find(
     (b) => b.type === selection.id,
   )
+
+  const upgradeBusy = useMemo(
+    () => actions.some(
+      (action) => action.status === 'in_progress' && action.type === 'upgrade',
+    ),
+    [actions],
+  )
+
+  const trainBusy = useMemo(
+    () => actions.some(
+      (action) => action.status === 'in_progress' && action.type === 'train',
+    ),
+    [actions],
+  )
+
+  const trainCount = useMemo(() => {
+    if (!building?.trainCapacity) {
+      return 5
+    }
+
+    return Math.min(5, building.trainCapacity)
+  }, [building?.trainCapacity])
+
+  const trainTotalCost = useMemo(() => {
+    if (!building?.trainCostPerTroop) {
+      return null
+    }
+
+    return {
+      wood: building.trainCostPerTroop.wood * trainCount,
+      stone: building.trainCostPerTroop.stone * trainCount,
+      gold: building.trainCostPerTroop.gold * trainCount,
+      food: building.trainCostPerTroop.food * trainCount,
+    }
+  }, [building?.trainCostPerTroop, trainCount])
 
   const handleUpgrade = async () => {
     setSubmitting(true)
@@ -35,7 +72,7 @@ function BuildingDetail({ selection }) {
   const handleTrain = async () => {
     setSubmitting(true)
     try {
-      await submitAction('train', { count: 5, buildingType: building.type })
+      await submitAction('train', { count: trainCount, buildingType: building.type })
     } finally {
       setSubmitting(false)
     }
@@ -70,7 +107,14 @@ function BuildingDetail({ selection }) {
 
       {building.nextUpgradeCost && (
         <p className="text-sm text-muted-foreground">
-          Next upgrade: {formatCost(building.nextUpgradeCost)}
+          Upgrade cost: {formatCost(building.nextUpgradeCost)}
+        </p>
+      )}
+
+      {building.canTrainTroops && building.trainCostPerTroop && (
+        <p className="text-sm text-muted-foreground">
+          Train {trainCount} troops: {formatCost(trainTotalCost)} (max{' '}
+          {building.trainCapacity} per action)
         </p>
       )}
 
@@ -78,7 +122,7 @@ function BuildingDetail({ selection }) {
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            disabled={submitting}
+            disabled={submitting || upgradeBusy}
             onClick={handleUpgrade}
           >
             Upgrade
@@ -86,10 +130,10 @@ function BuildingDetail({ selection }) {
           {building.canTrainTroops && (
             <Button
               variant="outline"
-              disabled={submitting}
+              disabled={submitting || trainBusy || trainCount <= 0}
               onClick={handleTrain}
             >
-              Train 5 troops
+              Train {trainCount} troops
             </Button>
           )}
         </div>

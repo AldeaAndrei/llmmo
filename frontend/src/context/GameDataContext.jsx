@@ -4,17 +4,21 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { toast } from 'sonner'
 
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { useWorld } from '@/context/WorldContext'
 
 const GameDataContext = createContext(null)
 
 export function GameDataProvider({ children }) {
   const { isAuthenticated, playerId } = useAuth()
+  const { currentTick } = useWorld()
+  const prevTickRef = useRef(currentTick)
   const [mapCities, setMapCities] = useState([])
   const [cities, setCities] = useState([])
   const [loading, setLoading] = useState(true)
@@ -64,6 +68,20 @@ export function GameDataProvider({ children }) {
   }, [loadGame, isAuthenticated, playerId])
 
   useEffect(() => {
+    if (prevTickRef.current === currentTick) {
+      return
+    }
+
+    prevTickRef.current = currentTick
+
+    refreshMap()
+    if (isAuthenticated) {
+      refreshCities()
+      setActionRevision((revision) => revision + 1)
+    }
+  }, [currentTick, isAuthenticated, refreshCities, refreshMap])
+
+  useEffect(() => {
     if (!isAuthenticated) return
 
     const refresh = () => {
@@ -90,7 +108,7 @@ export function GameDataProvider({ children }) {
         })
         await refreshCities()
         setActionRevision((revision) => revision + 1)
-        toast.success(`${type} action queued`)
+        toast.success(`${type} action started`)
         return action
       } catch (err) {
         toast.error(err.message ?? 'Action failed')

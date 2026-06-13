@@ -1,6 +1,7 @@
 using llmmo.Api;
 using llmmo.Auth;
 using llmmo.Data;
+using llmmo.Tick;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,9 +10,18 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
 
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
+builder.Services.Configure<TickOptions>(options =>
+{
+    options.TickIntervalSeconds = builder.Configuration.GetValue("TickIntervalSeconds", 5);
+});
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AgentManagementService>();
+builder.Services.AddScoped<ActionSubmissionService>();
+builder.Services.AddScoped<ActionCompleter>();
+builder.Services.AddScoped<ProductionService>();
+builder.Services.AddScoped<TickService>();
+builder.Services.AddHostedService<TickBackgroundService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));

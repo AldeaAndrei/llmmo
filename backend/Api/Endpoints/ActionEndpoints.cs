@@ -1,8 +1,7 @@
-using System.Text.Json;
+using llmmo.Api;
 using llmmo.Api.Dtos;
 using llmmo.Auth;
 using llmmo.Data;
-using llmmo.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace llmmo.Api.Endpoints;
@@ -54,66 +53,33 @@ public static class ActionEndpoints
     private static async Task<IResult> CreateAction(
         CreateActionRequest request,
         HttpContext httpContext,
-        AppDbContext db,
+        ActionSubmissionService submissionService,
         CancellationToken cancellationToken)
     {
         var auth = httpContext.GetPlayerAuth()!;
 
-        if (request.CityId == Guid.Empty)
+        var (action, error) = await submissionService.SubmitAsync(
+            auth.PlayerId,
+            request,
+            cancellationToken);
+
+        if (error is not null)
         {
-            return Results.BadRequest(new { error = "CityId is required." });
+            if (error.Equals("Forbidden.", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            if (error.Equals("City not found.", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.NotFound(new { error });
+            }
+
+            return Results.BadRequest(new { error });
         }
-
-        if (string.IsNullOrWhiteSpace(request.Type))
-        {
-            return Results.BadRequest(new { error = "Type is required." });
-        }
-
-        if (!ActionDurations.IsAllowedType(request.Type))
-        {
-            return Results.BadRequest(new { error = "Type must be one of: build, upgrade, train, attack, scout." });
-        }
-
-        var city = await db.Cities.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == request.CityId, cancellationToken);
-
-        if (city is null)
-        {
-            return Results.NotFound(new { error = "City not found." });
-        }
-
-        if (city.PlayerId != auth.PlayerId)
-        {
-            return Results.StatusCode(StatusCodes.Status403Forbidden);
-        }
-
-        var worldState = await db.WorldState.AsNoTracking().FirstOrDefaultAsync(state => state.Id == 1, cancellationToken);
-        if (worldState is null)
-        {
-            return Results.Problem("World state is not initialized.", statusCode: StatusCodes.Status500InternalServerError);
-        }
-
-        var payloadJson = JsonSerializer.Serialize(request.Payload);
-        var normalizedType = request.Type.ToLowerInvariant();
-
-        var action = new GameAction
-        {
-            Id = Guid.NewGuid(),
-            PlayerId = auth.PlayerId,
-            CityId = request.CityId,
-            Type = normalizedType,
-            Payload = payloadJson,
-            Status = ActionStatus.Queued,
-            SubmittedAtTick = worldState.CurrentTick,
-            ReadyAtTick = null,
-            DurationTicks = ActionDurations.GetDurationTicks(normalizedType),
-        };
-
-        db.Actions.Add(action);
-        await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created(
-            $"/api/v1/actions/{action.Id}",
+            $"/api/v1/actions/{action!.Id}",
             ActionMapper.ToCreatedDto(action));
     }
 }

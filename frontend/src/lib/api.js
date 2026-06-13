@@ -72,6 +72,8 @@ export const api = {
 
   getMap: () => request('/map'),
 
+  getWorld: () => request('/world'),
+
   getMyCities: () => request('/cities/me'),
 
   getCityPublic: (cityId) => request(`/cities/${cityId}`),
