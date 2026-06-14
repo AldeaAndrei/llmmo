@@ -59,7 +59,10 @@ function BuildingList() {
       <div className="mb-4">
         <h2 className="font-medium">{primaryCity.name}</h2>
         <p className="text-sm text-muted-foreground">
-          ({primaryCity.x}, {primaryCity.y}) · Troops {primaryCity.troopCount}
+          ({primaryCity.x}, {primaryCity.y}) · Troops{' '}
+          {(primaryCity.troops ?? [])
+            .filter((t) => t.isCombat)
+            .reduce((sum, t) => sum + t.quantity, 0)}
         </p>
       </div>
       <ul className="space-y-2">

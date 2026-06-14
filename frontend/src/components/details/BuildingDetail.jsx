@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import CityActionsList from '@/components/details/CityActionsList'
+import TrainTroopModal from '@/components/details/TrainTroopModal'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { useCityActions } from '@/hooks/useCityActions'
@@ -33,6 +34,7 @@ function BuildingDetail({ selection }) {
   const { primaryCity, submitAction } = useGameData()
   const { actions } = useCityActions(primaryCity?.id)
   const [submitting, setSubmitting] = useState(false)
+  const [trainOpen, setTrainOpen] = useState(false)
 
   const building = primaryCity?.buildings?.find(
     (b) => b.type === selection.id,
@@ -52,27 +54,6 @@ function BuildingDetail({ selection }) {
     [actions],
   )
 
-  const trainCount = useMemo(() => {
-    if (!building?.trainCapacity) {
-      return 5
-    }
-
-    return Math.min(5, building.trainCapacity)
-  }, [building?.trainCapacity])
-
-  const trainTotalCost = useMemo(() => {
-    if (!building?.trainCostPerTroop) {
-      return null
-    }
-
-    return {
-      wood: building.trainCostPerTroop.wood * trainCount,
-      stone: building.trainCostPerTroop.stone * trainCount,
-      gold: building.trainCostPerTroop.gold * trainCount,
-      food: building.trainCostPerTroop.food * trainCount,
-    }
-  }, [building?.trainCostPerTroop, trainCount])
-
   const handleUpgrade = async () => {
     setSubmitting(true)
     try {
@@ -82,10 +63,15 @@ function BuildingDetail({ selection }) {
     }
   }
 
-  const handleTrain = async () => {
+  const handleTrain = async ({ troopType, count }) => {
     setSubmitting(true)
     try {
-      await submitAction('train', { count: trainCount, buildingType: building.type })
+      await submitAction('train', {
+        count,
+        troopType,
+        buildingType: building.type,
+      })
+      setTrainOpen(false)
     } finally {
       setSubmitting(false)
     }
@@ -128,16 +114,9 @@ function BuildingDetail({ selection }) {
         </p>
       )}
 
-      {building.canTrainTroops && building.trainCostPerTroop && (
-        <p className="text-sm">
-          <span className="text-muted-foreground">
-            Train {trainCount} troops:{' '}
-          </span>
-          <CostDisplay cost={trainTotalCost} available={primaryCity} />
-          <span className="text-muted-foreground">
-            {' '}
-            (max {building.trainCapacity} per action)
-          </span>
+      {building.canTrainTroops && (
+        <p className="text-sm text-muted-foreground">
+          Train troops at barracks (max {building.trainCapacity} per action)
         </p>
       )}
 
@@ -153,16 +132,25 @@ function BuildingDetail({ selection }) {
           {building.canTrainTroops && (
             <Button
               variant="outline"
-              disabled={submitting || trainBusy || trainCount <= 0}
-              onClick={handleTrain}
+              disabled={submitting || trainBusy}
+              onClick={() => setTrainOpen(true)}
             >
-              Train {trainCount} troops
+              Train troops
             </Button>
           )}
         </div>
       )}
 
       <CityActionsList cityId={primaryCity?.id} ownedOnly />
+
+      <TrainTroopModal
+        open={trainOpen}
+        onOpenChange={setTrainOpen}
+        building={building}
+        city={primaryCity}
+        onSubmit={handleTrain}
+        submitting={submitting}
+      />
     </div>
   )
 }

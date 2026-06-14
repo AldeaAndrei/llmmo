@@ -25,6 +25,12 @@ public class AppDbContext : DbContext
 
     public DbSet<Building> Buildings => Set<Building>();
 
+    public DbSet<CityTroop> CityTroops => Set<CityTroop>();
+
+    public DbSet<MilitaryAttack> MilitaryAttacks => Set<MilitaryAttack>();
+
+    public DbSet<Report> Reports => Set<Report>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var playerTypeConverter = new ValueConverter<PlayerType, string>(
@@ -158,9 +164,29 @@ public class AppDbContext : DbContext
                 .HasColumnName("food")
                 .HasDefaultValue(0)
                 .IsRequired();
-            entity.Property(city => city.TroopCount)
-                .HasColumnName("troop_count")
-                .HasDefaultValue(0)
+            entity.Property(city => city.MaxWood)
+                .HasColumnName("max_wood")
+                .HasDefaultValue(1000)
+                .IsRequired();
+            entity.Property(city => city.MaxStone)
+                .HasColumnName("max_stone")
+                .HasDefaultValue(1000)
+                .IsRequired();
+            entity.Property(city => city.MaxGold)
+                .HasColumnName("max_gold")
+                .HasDefaultValue(1000)
+                .IsRequired();
+            entity.Property(city => city.MaxFood)
+                .HasColumnName("max_food")
+                .HasDefaultValue(1000)
+                .IsRequired();
+            entity.Property(city => city.DefenceFactor)
+                .HasColumnName("defence_factor")
+                .HasDefaultValue(1.0)
+                .IsRequired();
+            entity.Property(city => city.SpyDieChance)
+                .HasColumnName("spy_die_chance")
+                .HasDefaultValue(0.5)
                 .IsRequired();
             entity.Property(city => city.CreatedAt)
                 .HasColumnName("created_at")
@@ -257,6 +283,148 @@ public class AppDbContext : DbContext
                 .WithMany(city => city.Buildings)
                 .HasForeignKey(building => building.CityId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CityTroop>(entity =>
+        {
+            entity.ToTable("city_troops");
+
+            entity.HasKey(troop => troop.Id);
+
+            entity.Property(troop => troop.Id).HasColumnName("id");
+            entity.Property(troop => troop.CityId).HasColumnName("city_id");
+            entity.Property(troop => troop.Type)
+                .HasColumnName("type")
+                .HasMaxLength(32)
+                .IsRequired();
+            entity.Property(troop => troop.Quantity)
+                .HasColumnName("quantity")
+                .HasDefaultValue(0)
+                .IsRequired();
+            entity.Property(troop => troop.CreatedAt)
+                .HasColumnName("created_at")
+                .IsRequired();
+            entity.Property(troop => troop.UpdatedAt)
+                .HasColumnName("updated_at")
+                .IsRequired();
+
+            entity.HasIndex(troop => new { troop.CityId, troop.Type }).IsUnique();
+
+            entity.HasOne(troop => troop.City)
+                .WithMany(city => city.Troops)
+                .HasForeignKey(troop => troop.CityId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MilitaryAttack>(entity =>
+        {
+            entity.ToTable("attacks");
+
+            entity.HasKey(attack => attack.Id);
+
+            entity.Property(attack => attack.Id).HasColumnName("id");
+            entity.Property(attack => attack.PlayerId).HasColumnName("player_id");
+            entity.Property(attack => attack.SourceCityId).HasColumnName("source_city_id");
+            entity.Property(attack => attack.TargetCityId).HasColumnName("target_city_id");
+            entity.Property(attack => attack.TargetX).HasColumnName("target_x").IsRequired();
+            entity.Property(attack => attack.TargetY).HasColumnName("target_y").IsRequired();
+            entity.Property(attack => attack.Type)
+                .HasColumnName("type")
+                .HasMaxLength(16)
+                .IsRequired();
+            entity.Property(attack => attack.Status)
+                .HasColumnName("status")
+                .HasMaxLength(16)
+                .IsRequired();
+            entity.Property(attack => attack.Troops)
+                .HasColumnName("troops")
+                .HasColumnType("jsonb")
+                .IsRequired();
+            entity.Property(attack => attack.Survivors)
+                .HasColumnName("survivors")
+                .HasColumnType("jsonb");
+            entity.Property(attack => attack.OutboundDurationTicks)
+                .HasColumnName("outbound_duration_ticks")
+                .IsRequired();
+            entity.Property(attack => attack.ReturnDurationTicks)
+                .HasColumnName("return_duration_ticks")
+                .IsRequired();
+            entity.Property(attack => attack.DepartedAtTick)
+                .HasColumnName("departed_at_tick")
+                .IsRequired();
+            entity.Property(attack => attack.ArrivesAtTick)
+                .HasColumnName("arrives_at_tick")
+                .IsRequired();
+            entity.Property(attack => attack.ReturnsAtTick)
+                .HasColumnName("returns_at_tick");
+            entity.Property(attack => attack.LootWood).HasColumnName("loot_wood").IsRequired();
+            entity.Property(attack => attack.LootStone).HasColumnName("loot_stone").IsRequired();
+            entity.Property(attack => attack.LootGold).HasColumnName("loot_gold").IsRequired();
+            entity.Property(attack => attack.LootFood).HasColumnName("loot_food").IsRequired();
+            entity.Property(attack => attack.CreatedAt)
+                .HasColumnName("created_at")
+                .IsRequired();
+            entity.Property(attack => attack.UpdatedAt)
+                .HasColumnName("updated_at")
+                .IsRequired();
+
+            entity.HasIndex(attack => attack.PlayerId);
+            entity.HasIndex(attack => attack.Status);
+
+            entity.HasOne(attack => attack.Player)
+                .WithMany()
+                .HasForeignKey(attack => attack.PlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(attack => attack.SourceCity)
+                .WithMany()
+                .HasForeignKey(attack => attack.SourceCityId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(attack => attack.TargetCity)
+                .WithMany()
+                .HasForeignKey(attack => attack.TargetCityId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Report>(entity =>
+        {
+            entity.ToTable("reports");
+
+            entity.HasKey(report => report.Id);
+
+            entity.Property(report => report.Id).HasColumnName("id");
+            entity.Property(report => report.PlayerId).HasColumnName("player_id");
+            entity.Property(report => report.Type)
+                .HasColumnName("type")
+                .HasMaxLength(16)
+                .IsRequired();
+            entity.Property(report => report.AttackId).HasColumnName("attack_id");
+            entity.Property(report => report.SourceCityId).HasColumnName("source_city_id");
+            entity.Property(report => report.TargetCityId).HasColumnName("target_city_id");
+            entity.Property(report => report.TargetX).HasColumnName("target_x").IsRequired();
+            entity.Property(report => report.TargetY).HasColumnName("target_y").IsRequired();
+            entity.Property(report => report.Payload)
+                .HasColumnName("payload")
+                .HasColumnType("jsonb")
+                .IsRequired();
+            entity.Property(report => report.CreatedAt)
+                .HasColumnName("created_at")
+                .IsRequired();
+            entity.Property(report => report.ReadAt)
+                .HasColumnName("read_at");
+
+            entity.HasIndex(report => report.PlayerId);
+
+            entity.HasOne(report => report.Player)
+                .WithMany()
+                .HasForeignKey(report => report.PlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(report => report.Attack)
+                .WithMany()
+                .HasForeignKey(report => report.AttackId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<WorldState>(entity =>
@@ -388,6 +556,40 @@ public class AppDbContext : DbContext
             else if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<CityTroop>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = utcNow;
+                entry.Entity.UpdatedAt = utcNow;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<MilitaryAttack>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = utcNow;
+                entry.Entity.UpdatedAt = utcNow;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<Report>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = utcNow;
             }
         }
 

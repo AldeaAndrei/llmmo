@@ -10,20 +10,23 @@ public class TickService
 
     private readonly AppDbContext _db;
     private readonly ActionCompleter _actionCompleter;
-    private readonly ProductionService _productionService;
+    private readonly AttackMovementService _attackMovementService;
+    private readonly CityEconomyService _cityEconomyService;
     private readonly TickOptions _options;
     private readonly ILogger<TickService> _logger;
 
     public TickService(
         AppDbContext db,
         ActionCompleter actionCompleter,
-        ProductionService productionService,
+        AttackMovementService attackMovementService,
+        CityEconomyService cityEconomyService,
         IOptions<TickOptions> options,
         ILogger<TickService> logger)
     {
         _db = db;
         _actionCompleter = actionCompleter;
-        _productionService = productionService;
+        _attackMovementService = attackMovementService;
+        _cityEconomyService = cityEconomyService;
         _options = options.Value;
         _logger = logger;
     }
@@ -61,7 +64,8 @@ public class TickService
 
             worldState.CurrentTick += 1;
             await _actionCompleter.CompleteReadyActionsAsync(worldState.CurrentTick, cancellationToken);
-            await _productionService.ApplyProductionAsync(cancellationToken);
+            await _attackMovementService.ProcessAsync(worldState.CurrentTick, cancellationToken);
+            await _cityEconomyService.ApplyProductionThenUpkeepAsync(cancellationToken);
 
             var utcNow = DateTime.UtcNow;
             worldState.LastTickAt = utcNow;

@@ -22,7 +22,17 @@ public class City
 
     public int Food { get; set; }
 
-    public int TroopCount { get; set; }
+    public int MaxWood { get; set; }
+
+    public int MaxStone { get; set; }
+
+    public int MaxGold { get; set; }
+
+    public int MaxFood { get; set; }
+
+    public double DefenceFactor { get; set; }
+
+    public double SpyDieChance { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
@@ -31,4 +41,6 @@ public class City
     public ICollection<GameAction> Actions { get; set; } = new List<GameAction>();
 
     public ICollection<Building> Buildings { get; set; } = new List<Building>();
+
+    public ICollection<CityTroop> Troops { get; set; } = new List<CityTroop>();
 }

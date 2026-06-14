@@ -32,6 +32,26 @@ function TickLine({ currentTick, secondsUntilNextTick }) {
   )
 }
 
+function formatTickDelta(delta) {
+  if (delta > 0) {
+    return `+${delta}`
+  }
+
+  if (delta < 0) {
+    return String(delta)
+  }
+
+  return '+0'
+}
+
+function formatResource(label, resource) {
+  if (!resource) {
+    return `${label} —`
+  }
+
+  return `${label} ${resource.amount}/${resource.max} ${formatTickDelta(resource.tickDelta)}`
+}
+
 function StatusBar() {
   const { isAuthenticated } = useAuth()
   const { primaryCity, loading } = useGameData()
@@ -80,24 +100,34 @@ function StatusBar() {
     )
   }
 
+  const troopLine = (primaryCity.troops ?? [])
+    .map((t) => `${t.type}: ${t.quantity}`)
+    .join(' ')
+
+  const resources = primaryCity.resources
+
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2 text-sm text-muted-foreground">
-      <span>
-        Gold {primaryCity.gold} · Stone {primaryCity.stone} · Wood{' '}
-        {primaryCity.wood} · Food {primaryCity.food} · Troops{' '}
-        {primaryCity.troopCount}
-      </span>
-      <Separator orientation="vertical" className="hidden h-4 sm:block" />
-      <span>{primaryCity.name}</span>
-      <Separator orientation="vertical" className="hidden h-4 sm:block" />
-      <TickLine
-        currentTick={currentTick}
-        secondsUntilNextTick={secondsUntilNextTick}
-      />
-      <Separator orientation="vertical" className="hidden h-4 sm:block" />
-      <span>Upgrade: {slotSummary(actions, 'upgrade', currentTick)}</span>
-      <Separator orientation="vertical" className="hidden h-4 sm:block" />
-      <span>Train: {slotSummary(actions, 'train', currentTick)}</span>
+    <div className="space-y-1 border-b px-4 py-2 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-3">
+        <span>
+          {formatResource('Gold', resources?.gold)} ·{' '}
+          {formatResource('Stone', resources?.stone)} ·{' '}
+          {formatResource('Wood', resources?.wood)} ·{' '}
+          {formatResource('Food', resources?.food)}
+        </span>
+        <Separator orientation="vertical" className="hidden h-4 sm:block" />
+        <span>{primaryCity.name}</span>
+        <Separator orientation="vertical" className="hidden h-4 sm:block" />
+        <TickLine
+          currentTick={currentTick}
+          secondsUntilNextTick={secondsUntilNextTick}
+        />
+        <Separator orientation="vertical" className="hidden h-4 sm:block" />
+        <span>Upgrade: {slotSummary(actions, 'upgrade', currentTick)}</span>
+        <Separator orientation="vertical" className="hidden h-4 sm:block" />
+        <span>Train: {slotSummary(actions, 'train', currentTick)}</span>
+      </div>
+      {troopLine && <div>{troopLine}</div>}
     </div>
   )
 }

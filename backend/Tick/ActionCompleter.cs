@@ -1,6 +1,7 @@
 using System.Text.Json;
 using llmmo.Api;
 using llmmo.Api.Buildings;
+using llmmo.Api.Troops;
 using llmmo.Data;
 using llmmo.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,8 @@ public class ActionCompleter
         var actions = await _db.Actions
             .Include(action => action.City)
             .ThenInclude(city => city.Buildings)
+            .Include(action => action.City)
+            .ThenInclude(city => city.Troops)
             .Where(action =>
                 action.Status == ActionStatus.InProgress
                 && action.ReadyAtTick != null
@@ -58,12 +61,6 @@ public class ActionCompleter
             return;
         }
 
-        if (action.Type.Equals("attack", StringComparison.OrdinalIgnoreCase)
-            || action.Type.Equals("scout", StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
         throw new InvalidOperationException($"Unsupported action type: {action.Type}");
     }
 
@@ -94,7 +91,23 @@ public class ActionCompleter
             throw new InvalidOperationException("Train payload missing valid count.");
         }
 
-        city.TroopCount += count;
+        var troopType = ActionPayloadHelper.GetTroopType(payload) ?? "soldier";
+        var troop = city.Troops.FirstOrDefault(t =>
+            t.Type.Equals(troopType, StringComparison.OrdinalIgnoreCase));
+
+        if (troop is null)
+        {
+            troop = new CityTroop
+            {
+                Id = Guid.NewGuid(),
+                CityId = city.Id,
+                Type = troopType,
+                Quantity = 0,
+            };
+            city.Troops.Add(troop);
+        }
+
+        troop.Quantity += count;
     }
 
     private static void Refund(GameAction action)

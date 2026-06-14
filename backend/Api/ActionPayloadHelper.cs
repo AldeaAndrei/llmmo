@@ -46,6 +46,21 @@ public static class ActionPayloadHelper
         return property.TryGetInt32(out var count) ? count : defaultCount;
     }
 
+    public static string? GetTroopType(JsonElement payload)
+    {
+        if (payload.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        if (!payload.TryGetProperty("troopType", out var property))
+        {
+            return null;
+        }
+
+        return property.GetString();
+    }
+
     public static Guid? GetTargetCityId(JsonElement payload)
     {
         if (payload.ValueKind != JsonValueKind.Object)

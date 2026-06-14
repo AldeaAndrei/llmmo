@@ -10,6 +10,7 @@ import {
   drawGrid,
 } from '@/lib/mapTerrain'
 import { loadMapSprites } from '@/lib/mapSprites'
+import { api } from '@/lib/api'
 import {
   CELL_SIZE,
   parseTileId,
@@ -23,6 +24,7 @@ function drawMap({
   mapSize,
   selectedTile,
   mapCities,
+  attacks,
 }) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
@@ -37,6 +39,27 @@ function drawMap({
   }
 
   drawGrid(ctx, mapSize, CELL_SIZE)
+
+  for (const attack of attacks ?? []) {
+    const sx = attack.source.x * CELL_SIZE + CELL_SIZE / 2
+    const sy = attack.source.y * CELL_SIZE + CELL_SIZE / 2
+    const tx = attack.target.x * CELL_SIZE + CELL_SIZE / 2
+    const ty = attack.target.y * CELL_SIZE + CELL_SIZE / 2
+
+    ctx.strokeStyle = attack.type === 'scout' ? 'rgba(147, 51, 234, 0.5)' : 'rgba(220, 38, 38, 0.5)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(sx, sy)
+    ctx.lineTo(tx, ty)
+    ctx.stroke()
+
+    const dotX = attack.currentX * CELL_SIZE + CELL_SIZE / 2
+    const dotY = attack.currentY * CELL_SIZE + CELL_SIZE / 2
+    ctx.fillStyle = attack.type === 'scout' ? '#9333ea' : '#dc2626'
+    ctx.beginPath()
+    ctx.arc(dotX, dotY, 4, 0, Math.PI * 2)
+    ctx.fill()
+  }
 
   for (const city of mapCities) {
     const tier = citySpriteIndex(city.id)
@@ -68,8 +91,10 @@ function MapCanvas({ mapSize, worldSeed }) {
   const terrainRef = useRef(null)
   const { selection, setSelection } = useGameUI()
   const { mapCities } = useGameData()
+  const { currentTick } = useWorld()
   const [sprites, setSprites] = useState(null)
   const [mapReady, setMapReady] = useState(false)
+  const [attacks, setAttacks] = useState([])
 
   const selectedTileId = selection?.type === 'tile' ? selection.id : null
 
@@ -105,6 +130,23 @@ function MapCanvas({ mapSize, worldSeed }) {
   }, [sprites, worldSeed, mapSize])
 
   useEffect(() => {
+    let cancelled = false
+
+    api
+      .getAttacks()
+      .then((data) => {
+        if (!cancelled) setAttacks(data)
+      })
+      .catch(() => {
+        if (!cancelled) setAttacks([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [currentTick])
+
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !sprites || !mapReady || !terrainRef.current) return
 
@@ -117,8 +159,9 @@ function MapCanvas({ mapSize, worldSeed }) {
       mapSize,
       selectedTile,
       mapCities,
+      attacks,
     })
-  }, [selectedTileId, mapCities, sprites, mapReady, mapSize])
+  }, [selectedTileId, mapCities, sprites, mapReady, mapSize, attacks])
 
   const handleClick = useCallback(
     (event) => {

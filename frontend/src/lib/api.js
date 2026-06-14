@@ -82,4 +82,19 @@ export const api = {
     request('/actions', { method: 'POST', body: JSON.stringify(body) }),
 
   getActions: (cityId) => request(`/actions?city_id=${cityId}`),
+
+  getTroopCatalog: () => request('/catalog/troops'),
+
+  getAttacks: (cityId) =>
+    request(cityId ? `/attacks?city_id=${cityId}` : '/attacks'),
+
+  previewAttack: (body) =>
+    request('/attacks/preview', { method: 'POST', body: JSON.stringify(body) }),
+
+  createAttack: (body) =>
+    request('/attacks', { method: 'POST', body: JSON.stringify(body) }),
+
+  getReports: () => request('/reports'),
+
+  getReport: (reportId) => request(`/reports/${reportId}`),
 }

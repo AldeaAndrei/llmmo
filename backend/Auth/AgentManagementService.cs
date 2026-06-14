@@ -86,7 +86,7 @@ public class AgentManagementService
 
         _db.Players.Add(player);
         _db.Cities.Add(city);
-        _db.Buildings.AddRange(BuildingSetup.CreateDefaults(cityId));
+        CityBootstrap.AddDefaults(_db, cityId, soldierCount: CitySetup.StarterSoldiers);
         _db.ApiKeys.Add(keyEntity);
 
         try

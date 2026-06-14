@@ -91,7 +91,7 @@ public static class AuthEndpoints
         db.Users.Add(user);
         db.Players.Add(player);
         db.Cities.Add(city);
-        db.Buildings.AddRange(BuildingSetup.CreateDefaults(cityId));
+        CityBootstrap.AddDefaults(db, cityId, soldierCount: CitySetup.StarterSoldiers);
 
         try
         {

@@ -1,19 +1,29 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import AttackTroopModal from '@/components/details/AttackTroopModal'
 import CityActionsList from '@/components/details/CityActionsList'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { api } from '@/lib/api'
 import { findCityAt, parseTileId } from '@/lib/map'
 
+function formatTroops(troops) {
+  if (!troops?.length) return 'none'
+  return troops
+    .filter((t) => t.quantity > 0)
+    .map((t) => `${t.quantity} ${t.name ?? t.type}`)
+    .join(', ')
+}
+
 function MapTileDetail({ selection }) {
   const { x, y } = parseTileId(selection.id)
   const { isAuthenticated } = useAuth()
-  const { mapCities, playerId, primaryCity, cities, submitAction, refreshCities } =
-    useGameData()
-  const [cityPublic, setCityPublic] = useState(null)
+  const { mapCities, playerId, primaryCity, cities, refreshCities } = useGameData()
+  const [cityDetail, setCityDetail] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [attackOpen, setAttackOpen] = useState(false)
+  const [scoutOpen, setScoutOpen] = useState(false)
 
   const cityAtTile = findCityAt(mapCities, x, y)
   const isOwnCity = cityAtTile && playerId && cityAtTile.playerId === playerId
@@ -21,14 +31,24 @@ function MapTileDetail({ selection }) {
     ? cities.find((city) => city.id === cityAtTile.id) ?? primaryCity
     : null
 
+  const canAttack = useMemo(
+    () => (primaryCity?.troops ?? []).some((t) => t.isCombat && t.quantity > 0),
+    [primaryCity?.troops],
+  )
+
+  const canScout = useMemo(
+    () => (primaryCity?.troops ?? []).some((t) => t.type === 'spy' && t.quantity > 0),
+    [primaryCity?.troops],
+  )
+
   useEffect(() => {
     if (!cityAtTile) {
-      setCityPublic(null)
+      setCityDetail(null)
       return
     }
 
     if (isOwnCity) {
-      setCityPublic(null)
+      setCityDetail(null)
       refreshCities()
       return
     }
@@ -39,10 +59,10 @@ function MapTileDetail({ selection }) {
     api
       .getCityPublic(cityAtTile.id)
       .then((detail) => {
-        if (!cancelled) setCityPublic(detail)
+        if (!cancelled) setCityDetail(detail)
       })
       .catch(() => {
-        if (!cancelled) setCityPublic(null)
+        if (!cancelled) setCityDetail(null)
       })
       .finally(() => {
         if (!cancelled) setLoadingDetail(false)
@@ -53,23 +73,9 @@ function MapTileDetail({ selection }) {
     }
   }, [cityAtTile, isOwnCity, refreshCities])
 
-  const handleScout = async () => {
-    setSubmitting(true)
-    try {
-      await submitAction('scout', { targetX: x, targetY: y })
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleAttack = async () => {
-    if (!cityAtTile) return
-    setSubmitting(true)
-    try {
-      await submitAction('attack', { targetCityId: cityAtTile.id })
-    } finally {
-      setSubmitting(false)
-    }
+  const handleExpeditionSuccess = async (label) => {
+    await refreshCities()
+    toast.success(`${label} launched`)
   }
 
   return (
@@ -90,39 +96,53 @@ function MapTileDetail({ selection }) {
         <div className="space-y-1 text-sm">
           <p className="font-medium">{ownCityFull.name}</p>
           <p className="text-muted-foreground">
-            Troops {ownCityFull.troopCount} · Wood {ownCityFull.wood} · Stone{' '}
+            Troops {formatTroops(ownCityFull.troops)} · Wood {ownCityFull.wood} · Stone{' '}
             {ownCityFull.stone} · Gold {ownCityFull.gold} · Food {ownCityFull.food}
           </p>
         </div>
       )}
 
-      {cityPublic && !isOwnCity && (
+      {cityDetail && !isOwnCity && (
         <div className="space-y-1 text-sm">
-          <p className="font-medium">{cityPublic.name}</p>
-          <p className="text-muted-foreground">
-            Enemy city — resources hidden until scouted in-game.
-          </p>
+          <p className="font-medium">{cityDetail.name}</p>
+          {cityDetail.visibility === 'scouted' && cityDetail.resources && (
+            <p className="text-muted-foreground">
+              Wood {cityDetail.resources.wood} · Stone {cityDetail.resources.stone} · Gold{' '}
+              {cityDetail.resources.gold} · Food {cityDetail.resources.food}
+            </p>
+          )}
+          {cityDetail.visibility === 'scouted' && cityDetail.troops && (
+            <p className="text-muted-foreground">
+              Troops {cityDetail.troops.map((t) => `${t.count} ${t.type}`).join(', ')}
+            </p>
+          )}
+          {cityDetail.visibility === 'public' && (
+            <p className="text-muted-foreground">
+              Enemy city — scout to reveal resources and troops.
+            </p>
+          )}
         </div>
       )}
 
-      {!cityAtTile && isAuthenticated && primaryCity && (
-        <Button
-          variant="outline"
-          disabled={submitting}
-          onClick={handleScout}
-        >
-          Scout tile
-        </Button>
-      )}
-
-      {cityAtTile && !isOwnCity && isAuthenticated && primaryCity && (
-        <Button
-          variant="outline"
-          disabled={submitting}
-          onClick={handleAttack}
-        >
-          Attack city
-        </Button>
+      {isAuthenticated && primaryCity && !isOwnCity && (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            disabled={!canScout}
+            onClick={() => setScoutOpen(true)}
+          >
+            Scout tile
+          </Button>
+          {cityAtTile && (
+            <Button
+              variant="outline"
+              disabled={!canAttack}
+              onClick={() => setAttackOpen(true)}
+            >
+              Attack city
+            </Button>
+          )}
+        </div>
       )}
 
       {isOwnCity && (
@@ -135,6 +155,28 @@ function MapTileDetail({ selection }) {
         cityId={isOwnCity ? cityAtTile?.id : primaryCity?.id}
         title={isOwnCity ? 'City actions' : 'Your city actions'}
         ownedOnly
+      />
+
+      <AttackTroopModal
+        open={scoutOpen}
+        onOpenChange={setScoutOpen}
+        mode="scout"
+        sourceCity={primaryCity}
+        targetCityId={cityAtTile?.id ?? null}
+        targetX={x}
+        targetY={y}
+        onSuccess={() => handleExpeditionSuccess('Scout')}
+      />
+
+      <AttackTroopModal
+        open={attackOpen}
+        onOpenChange={setAttackOpen}
+        mode="attack"
+        sourceCity={primaryCity}
+        targetCityId={cityAtTile?.id}
+        targetX={x}
+        targetY={y}
+        onSuccess={() => handleExpeditionSuccess('Attack')}
       />
     </div>
   )

@@ -1,5 +1,6 @@
 using llmmo.Api;
 using llmmo.Api.Buildings;
+using llmmo.Api.Troops;
 using llmmo.Data;
 using llmmo.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -53,7 +54,7 @@ public static class WorldSeeder
 
             db.Players.Add(player);
             db.Cities.Add(city);
-            db.Buildings.AddRange(BuildingSetup.CreateDefaults(cityId));
+            CityBootstrap.AddDefaults(db, cityId, soldierCount: 0);
 
             Console.WriteLine(
                 $"  {playerName,-16} llm    city @ ({x,2},{y,2})  troops=0  W=0 S=0 G=0 F=0");
@@ -92,11 +93,11 @@ public static class WorldSeeder
         db.Users.Add(adminUser);
         db.Players.Add(adminPlayer);
         db.Cities.Add(adminCity);
-        db.Buildings.AddRange(BuildingSetup.CreateDefaults(adminCityId));
+        CityBootstrap.AddDefaults(db, adminCityId, soldierCount: CitySetup.StarterSoldiers);
 
         Console.WriteLine(
             $"  {AdminEmail} / {AdminPlayerName} @ ({adminTile.X,2},{adminTile.Y,2})  " +
-            $"W={adminCity.Wood} S={adminCity.Stone} G={adminCity.Gold} F={adminCity.Food} troops={adminCity.TroopCount}");
+            $"W={adminCity.Wood} S={adminCity.Stone} G={adminCity.Gold} F={adminCity.Food} soldiers={CitySetup.StarterSoldiers}");
 
         await db.SaveChangesAsync(cancellationToken);
     }
@@ -106,6 +107,9 @@ public static class WorldSeeder
         Console.WriteLine("Resetting world...");
 
         await db.Actions.ExecuteDeleteAsync(cancellationToken);
+        await db.Reports.ExecuteDeleteAsync(cancellationToken);
+        await db.MilitaryAttacks.ExecuteDeleteAsync(cancellationToken);
+        await db.CityTroops.ExecuteDeleteAsync(cancellationToken);
         await db.ApiKeys.ExecuteDeleteAsync(cancellationToken);
         await db.Buildings.ExecuteDeleteAsync(cancellationToken);
         await db.Cities.ExecuteDeleteAsync(cancellationToken);
@@ -148,7 +152,12 @@ public static class WorldSeeder
         Stone = 0,
         Gold = 0,
         Food = 0,
-        TroopCount = 0,
+        MaxWood = CityResourceCalculator.DefaultMaxResource,
+        MaxStone = CityResourceCalculator.DefaultMaxResource,
+        MaxGold = CityResourceCalculator.DefaultMaxResource,
+        MaxFood = CityResourceCalculator.DefaultMaxResource,
+        DefenceFactor = 1.0,
+        SpyDieChance = 0.5,
     };
 
     private static string BuildPlayerName(Random random, int index)

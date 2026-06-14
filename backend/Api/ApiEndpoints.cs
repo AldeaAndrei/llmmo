@@ -14,6 +14,9 @@ public static class ApiEndpoints
         api.MapMapEndpoints();
         api.MapWorldEndpoints();
         api.MapActionEndpoints();
+        api.MapCatalogEndpoints();
+        api.MapAttackEndpoints();
+        api.MapReportEndpoints();
 
         return app;
     }

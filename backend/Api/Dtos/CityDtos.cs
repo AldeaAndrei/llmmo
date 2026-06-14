@@ -1,5 +1,16 @@
 namespace llmmo.Api.Dtos;
 
+public record CityResourceViewDto(
+    int Amount,
+    int Max,
+    int TickDelta);
+
+public record CityResourcesViewDto(
+    CityResourceViewDto Gold,
+    CityResourceViewDto Stone,
+    CityResourceViewDto Wood,
+    CityResourceViewDto Food);
+
 public record CityFullDto(
     Guid Id,
     Guid PlayerId,
@@ -10,7 +21,10 @@ public record CityFullDto(
     int Stone,
     int Gold,
     int Food,
-    int TroopCount,
+    CityResourcesViewDto Resources,
+    double DefenceFactor,
+    double SpyDieChance,
+    IReadOnlyList<CityTroopDto> Troops,
     IReadOnlyList<BuildingDto> Buildings,
     DateTime CreatedAt,
     DateTime UpdatedAt);

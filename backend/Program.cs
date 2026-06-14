@@ -18,8 +18,14 @@ builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AgentManagementService>();
 builder.Services.AddScoped<ActionSubmissionService>();
+builder.Services.AddScoped<AttackSubmissionService>();
+builder.Services.AddScoped<IntelService>();
 builder.Services.AddScoped<ActionCompleter>();
+builder.Services.AddScoped<CombatResolver>();
+builder.Services.AddScoped<AttackMovementService>();
+builder.Services.AddScoped<CityEconomyService>();
 builder.Services.AddScoped<ProductionService>();
+builder.Services.AddScoped<TroopUpkeepService>();
 builder.Services.AddScoped<TickService>();
 builder.Services.AddHostedService<TickBackgroundService>();
 

@@ -8,7 +8,7 @@ public static class CitySetup
     public const int StarterStone = 50;
     public const int StarterGold = 2;
     public const int StarterFood = 20;
-    public const int StarterTroops = 1;
+    public const int StarterSoldiers = 1;
 
     public static string BuildCityName(string playerName)
     {
@@ -32,6 +32,11 @@ public static class CitySetup
         Stone = StarterStone,
         Gold = StarterGold,
         Food = StarterFood,
-        TroopCount = StarterTroops,
+        MaxWood = CityResourceCalculator.DefaultMaxResource,
+        MaxStone = CityResourceCalculator.DefaultMaxResource,
+        MaxGold = CityResourceCalculator.DefaultMaxResource,
+        MaxFood = CityResourceCalculator.DefaultMaxResource,
+        DefenceFactor = 1.0,
+        SpyDieChance = 0.5,
     };
 }

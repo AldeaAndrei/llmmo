@@ -1,5 +1,6 @@
-using llmmo.Api.Buildings;
+using llmmo.Api;
 using llmmo.Data;
+using llmmo.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace llmmo.Tick;
@@ -21,31 +22,10 @@ public class ProductionService
 
         foreach (var city in cities)
         {
-            foreach (var building in city.Buildings)
-            {
-                var def = BuildingCatalog.Get(building.Type);
-                if (!def.ProducesResources)
-                {
-                    continue;
-                }
-
-                var amount = BuildingCatalog.ProductionAtLevel(building.Type, building.Level);
-                switch (def.Resource)
-                {
-                    case BuildingResource.Gold:
-                        city.Gold += amount;
-                        break;
-                    case BuildingResource.Stone:
-                        city.Stone += amount;
-                        break;
-                    case BuildingResource.Wood:
-                        city.Wood += amount;
-                        break;
-                    case BuildingResource.Food:
-                        city.Food += amount;
-                        break;
-                }
-            }
+            ApplyProduction(city);
         }
     }
+
+    public static void ApplyProduction(City city) =>
+        CityResourceCalculator.ApplyCappedProduction(city);
 }
