@@ -1,5 +1,5 @@
 export const MAP_SIZE = 100
-export const CELL_SIZE = 20
+export const CELL_SIZE = 40
 
 export function tileId(x, y) {
   return `${x},${y}`

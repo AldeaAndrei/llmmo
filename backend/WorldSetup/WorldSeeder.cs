@@ -113,6 +113,7 @@ public static class WorldSeeder
         await db.Users.ExecuteDeleteAsync(cancellationToken);
 
         var utcNow = DateTime.UtcNow;
+        var worldSeed = Random.Shared.Next(1, int.MaxValue);
         var worldState = await db.WorldState.FirstOrDefaultAsync(state => state.Id == 1, cancellationToken);
         if (worldState is null)
         {
@@ -120,12 +121,16 @@ public static class WorldSeeder
             {
                 Id = 1,
                 CurrentTick = 0,
+                WorldSeed = worldSeed,
+                MapSize = MapSize,
                 LastTickAt = utcNow,
             });
         }
         else
         {
             worldState.CurrentTick = 0;
+            worldState.WorldSeed = worldSeed;
+            worldState.MapSize = MapSize;
             worldState.LastTickAt = utcNow;
         }
 

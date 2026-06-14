@@ -5,14 +5,27 @@ import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { useCityActions } from '@/hooks/useCityActions'
 
-function formatCost(cost) {
+const RESOURCE_KEYS = ['wood', 'stone', 'gold', 'food']
+
+function CostDisplay({ cost, available }) {
   if (!cost) return null
-  const parts = []
-  if (cost.wood) parts.push(`${cost.wood} wood`)
-  if (cost.stone) parts.push(`${cost.stone} stone`)
-  if (cost.gold) parts.push(`${cost.gold} gold`)
-  if (cost.food) parts.push(`${cost.food} food`)
-  return parts.join(', ')
+
+  const entries = RESOURCE_KEYS.filter((key) => cost[key]).map((key) => ({
+    key,
+    amount: cost[key],
+    affordable: (available?.[key] ?? 0) >= cost[key],
+  }))
+
+  if (entries.length === 0) return null
+
+  return entries.map((entry, index) => (
+    <span key={entry.key}>
+      {index > 0 && ', '}
+      <span className={entry.affordable ? 'text-green-600' : 'text-destructive'}>
+        {entry.amount} {entry.key}
+      </span>
+    </span>
+  ))
 }
 
 function BuildingDetail({ selection }) {
@@ -106,15 +119,25 @@ function BuildingDetail({ selection }) {
       )}
 
       {building.nextUpgradeCost && (
-        <p className="text-sm text-muted-foreground">
-          Upgrade cost: {formatCost(building.nextUpgradeCost)}
+        <p className="text-sm">
+          <span className="text-muted-foreground">Upgrade cost: </span>
+          <CostDisplay
+            cost={building.nextUpgradeCost}
+            available={primaryCity}
+          />
         </p>
       )}
 
       {building.canTrainTroops && building.trainCostPerTroop && (
-        <p className="text-sm text-muted-foreground">
-          Train {trainCount} troops: {formatCost(trainTotalCost)} (max{' '}
-          {building.trainCapacity} per action)
+        <p className="text-sm">
+          <span className="text-muted-foreground">
+            Train {trainCount} troops:{' '}
+          </span>
+          <CostDisplay cost={trainTotalCost} available={primaryCity} />
+          <span className="text-muted-foreground">
+            {' '}
+            (max {building.trainCapacity} per action)
+          </span>
         </p>
       )}
 

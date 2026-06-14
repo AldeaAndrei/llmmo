@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using llmmo.Data;
@@ -11,9 +12,10 @@ using llmmo.Data;
 namespace llmmo.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260613220000_AddWorldSeed")]
+    partial class AddWorldSeed
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -338,25 +340,25 @@ namespace llmmo.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("current_tick");
 
+                    b.Property<DateTime>("LastTickAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_tick_at");
+
                     b.Property<int>("MapSize")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(100)
                         .HasColumnName("map_size");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
                     b.Property<int>("WorldSeed")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
                         .HasColumnName("world_seed");
-
-                    b.Property<DateTime>("LastTickAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_tick_at");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -367,10 +369,10 @@ namespace llmmo.Migrations
                         {
                             Id = 1,
                             CurrentTick = 0,
-                            MapSize = 100,
-                            WorldSeed = 1,
                             LastTickAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                            MapSize = 100,
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            WorldSeed = 1
                         });
                 });
 
@@ -459,4 +461,5 @@ namespace llmmo.Migrations
 #pragma warning restore 612, 618
         }
     }
+
 }

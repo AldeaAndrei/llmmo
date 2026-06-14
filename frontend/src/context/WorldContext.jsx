@@ -54,6 +54,8 @@ export function WorldProvider({ children }) {
       loading,
       currentTick: world?.currentTick ?? 0,
       tickIntervalSeconds: world?.tickIntervalSeconds ?? 5,
+      worldSeed: world?.worldSeed ?? 1,
+      mapSize: world?.mapSize ?? 100,
       nextTickAt: world?.nextTickAt ?? null,
       secondsUntilNextTick,
       refreshWorld,

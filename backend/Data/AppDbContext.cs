@@ -270,6 +270,14 @@ public class AppDbContext : DbContext
                 .HasColumnName("current_tick")
                 .HasDefaultValue(0)
                 .IsRequired();
+            entity.Property(state => state.WorldSeed)
+                .HasColumnName("world_seed")
+                .HasDefaultValue(1)
+                .IsRequired();
+            entity.Property(state => state.MapSize)
+                .HasColumnName("map_size")
+                .HasDefaultValue(100)
+                .IsRequired();
             entity.Property(state => state.LastTickAt)
                 .HasColumnName("last_tick_at")
                 .IsRequired();
@@ -281,6 +289,8 @@ public class AppDbContext : DbContext
             {
                 Id = 1,
                 CurrentTick = 0,
+                WorldSeed = 1,
+                MapSize = 100,
                 LastTickAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             });

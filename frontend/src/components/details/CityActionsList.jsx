@@ -39,7 +39,7 @@ function CityActionsList({ cityId, title = 'Actions', ownedOnly = false }) {
     !ownedOnly ||
     (cityId && cities.some((city) => city.id === cityId && city.playerId === playerId))
 
-  const { actions, loading } = useCityActions(isOwned ? cityId : null)
+  const { actions, loading, error } = useCityActions(isOwned ? cityId : null)
 
   if (!isAuthenticated) {
     return (
@@ -58,15 +58,19 @@ function CityActionsList({ cityId, title = 'Actions', ownedOnly = false }) {
     <div className="space-y-2 border-t pt-4">
       <h3 className="text-sm font-medium">{title}</h3>
 
-      {loading && (
+      {error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
+
+      {loading && actions.length === 0 && (
         <p className="text-sm text-muted-foreground">Loading actions…</p>
       )}
 
-      {!loading && actions.length === 0 && (
+      {!loading && actions.length === 0 && !error && (
         <p className="text-sm text-muted-foreground">No actions queued.</p>
       )}
 
-      {!loading && actions.length > 0 && (
+      {actions.length > 0 && (
         <ul className="space-y-2">
           {actions.map((action) => {
             const payloadText = formatPayload(action.payload)

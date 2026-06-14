@@ -35,6 +35,8 @@ public static class WorldEndpoints
             worldState.CurrentTick,
             intervalSeconds,
             worldState.LastTickAt,
-            nextTickAt));
+            nextTickAt,
+            worldState.WorldSeed,
+            worldState.MapSize));
     }
 }
