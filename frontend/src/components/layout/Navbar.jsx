@@ -15,6 +15,7 @@ function Navbar() {
         <TabsList>
           <TabsTrigger value="map">Map</TabsTrigger>
           <TabsTrigger value="city">City</TabsTrigger>
+          <TabsTrigger value="llm-activity">LLM Activity</TabsTrigger>
           {isAuthenticated && (
             <TabsTrigger value="reports" className="relative">
               Reports

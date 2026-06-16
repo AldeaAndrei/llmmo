@@ -83,6 +83,18 @@ export const api = {
 
   getActions: (cityId) => request(`/actions?city_id=${cityId}`),
 
+  getLlmActions: ({ includeDone = false, limit = 50 } = {}) => {
+    const params = new URLSearchParams()
+    if (includeDone) {
+      params.set('include_done', 'true')
+    }
+    if (limit !== 50) {
+      params.set('limit', String(limit))
+    }
+    const query = params.toString()
+    return request(`/actions/llm${query ? `?${query}` : ''}`)
+  },
+
   getTroopCatalog: () => request('/catalog/troops'),
 
   getAttacks: (cityId) =>

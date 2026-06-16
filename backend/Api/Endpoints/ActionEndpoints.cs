@@ -2,6 +2,7 @@ using llmmo.Api;
 using llmmo.Api.Dtos;
 using llmmo.Auth;
 using llmmo.Data;
+using llmmo.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace llmmo.Api.Endpoints;
@@ -10,9 +11,38 @@ public static class ActionEndpoints
 {
     public static RouteGroupBuilder MapActionEndpoints(this RouteGroupBuilder group)
     {
+        group.MapGet("/actions/llm", ListLlmActions);
         group.MapGet("/actions", ListActions).RequireAuth();
         group.MapPost("/actions", CreateAction).RequireAuth();
         return group;
+    }
+
+    private static async Task<IResult> ListLlmActions(
+        bool? include_done,
+        int? limit,
+        AppDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var take = Math.Clamp(limit ?? 50, 1, 100);
+        var includeDone = include_done ?? false;
+
+        var query = db.Actions
+            .AsNoTracking()
+            .Include(action => action.Player)
+            .Include(action => action.City)
+            .Where(action => action.Player.PlayerType == PlayerType.Llm);
+
+        if (!includeDone)
+        {
+            query = query.Where(action => action.Status != ActionStatus.Done);
+        }
+
+        var actions = await query
+            .OrderByDescending(action => action.CreatedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(actions.Select(ActionMapper.ToLlmFeedDto));
     }
 
     private static async Task<IResult> ListActions(

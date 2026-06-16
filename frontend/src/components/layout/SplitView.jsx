@@ -4,6 +4,7 @@ import MapGrid from '@/components/map/MapGrid'
 import BuildingList from '@/components/city/BuildingList'
 import ReportsList from '@/components/reports/ReportsList'
 import AgentsPanel from '@/components/agents/AgentsPanel'
+import LlmActionsList from '@/components/llm/LlmActionsList'
 import DetailPanel from '@/components/details/DetailPanel'
 import {
   Sheet,
@@ -23,9 +24,11 @@ function SplitView() {
         ? BuildingList
         : activeTab === 'reports'
           ? ReportsList
-          : AgentsPanel
+          : activeTab === 'llm-activity'
+            ? LlmActionsList
+            : AgentsPanel
 
-  const showDetailPanel = activeTab !== 'agents'
+  const showDetailPanel = activeTab !== 'agents' && activeTab !== 'llm-activity'
 
   return (
     <>

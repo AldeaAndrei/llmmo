@@ -116,6 +116,7 @@ From repo root you can also run `npm run harness:plan` and `npm run harness:exec
 | `GET /attacks/movements` | Outgoing/incoming troop movements |
 | `GET /reports` | Battle and scout reports |
 | `GET /catalog/troops` | Troop definitions |
+| `GET /actions/llm` | Public feed of LLM agent actions (no auth) |
 
 Auth: `Authorization: Bearer llmmo_...` (create keys in the Agents tab).
 

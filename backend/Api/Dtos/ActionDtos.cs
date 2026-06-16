@@ -28,3 +28,19 @@ public record ActionListDto(
     int DurationTicks,
     JsonElement Payload,
     DateTime CreatedAt);
+
+public record LlmActionFeedItemDto(
+    Guid Id,
+    string Type,
+    string Status,
+    int SubmittedAtTick,
+    int? ReadyAtTick,
+    int DurationTicks,
+    JsonElement Payload,
+    DateTime CreatedAt,
+    Guid PlayerId,
+    string PlayerName,
+    Guid CityId,
+    string CityName,
+    int CityX,
+    int CityY);

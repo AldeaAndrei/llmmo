@@ -1,18 +1,42 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/context/AuthContext'
 import LoginForm from '@/components/auth/LoginForm'
 import RegisterForm from '@/components/auth/RegisterForm'
+import SpectateShell from '@/components/llm/SpectateShell'
 
 function AuthGate({ children }) {
   const { isAuthenticated, loading } = useAuth()
   const [mode, setMode] = useState('login')
+  const [spectate, setSpectate] = useState(
+    () => window.location.hash === '#watch',
+  )
+
+  useEffect(() => {
+    function syncHash() {
+      setSpectate(window.location.hash === '#watch')
+    }
+
+    window.addEventListener('hashchange', syncHash)
+    return () => window.removeEventListener('hashchange', syncHash)
+  }, [])
 
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         Loading…
       </div>
+    )
+  }
+
+  if (!isAuthenticated && spectate) {
+    return (
+      <SpectateShell
+        onSignIn={() => {
+          window.location.hash = ''
+          setSpectate(false)
+        }}
+      />
     )
   }
 
@@ -47,6 +71,20 @@ function AuthGate({ children }) {
           </div>
 
           {mode === 'login' ? <LoginForm /> : <RegisterForm />}
+
+          <div className="text-center">
+            <Button
+              type="button"
+              variant="link"
+              className="text-sm"
+              onClick={() => {
+                window.location.hash = '#watch'
+                setSpectate(true)
+              }}
+            >
+              Watch LLM agents without signing in
+            </Button>
+          </div>
         </div>
       </div>
     )
