@@ -26,12 +26,7 @@ public static class AttackMapper
     public static AttackMapDto ToMapDto(MilitaryAttack attack, City sourceCity, int currentTick)
     {
         var (phase, progress, currentX, currentY) = ComputePosition(attack, sourceCity, currentTick);
-        var troops = TroopStackHelper.Parse(
-            attack.Status == "returning" && !string.IsNullOrEmpty(attack.Survivors)
-                ? attack.Survivors
-                : attack.Troops)
-            .Select(TroopMapper.ToStackDto)
-            .ToList();
+        var troops = ParseTroops(attack);
 
         return new AttackMapDto(
             attack.Id,
@@ -44,6 +39,44 @@ public static class AttackMapper
             new AttackLocationDto(sourceCity.X, sourceCity.Y, sourceCity.Id),
             new AttackLocationDto(attack.TargetX, attack.TargetY, attack.TargetCityId),
             troops);
+    }
+
+    public static AttackMovementDto ToMovementDto(
+        MilitaryAttack attack,
+        City sourceCity,
+        string direction,
+        int currentTick)
+    {
+        var (phase, _, _, _) = ComputePosition(attack, sourceCity, currentTick);
+
+        return new AttackMovementDto(
+            attack.Id,
+            attack.Type,
+            attack.Status,
+            phase,
+            direction,
+            new AttackLocationDto(sourceCity.X, sourceCity.Y, sourceCity.Id),
+            new AttackLocationDto(attack.TargetX, attack.TargetY, attack.TargetCityId),
+            ParseTroops(attack),
+            ComputeRemainingTicks(attack, currentTick));
+    }
+
+    private static IReadOnlyList<TroopStackEntryDto> ParseTroops(MilitaryAttack attack) =>
+        TroopStackHelper.Parse(
+            attack.Status == "returning" && !string.IsNullOrEmpty(attack.Survivors)
+                ? attack.Survivors
+                : attack.Troops)
+            .Select(TroopMapper.ToStackDto)
+            .ToList();
+
+    public static int ComputeRemainingTicks(MilitaryAttack attack, int currentTick)
+    {
+        if (attack.Status == "returning" && attack.ReturnsAtTick.HasValue)
+        {
+            return Math.Max(0, attack.ReturnsAtTick.Value - currentTick);
+        }
+
+        return Math.Max(0, attack.ArrivesAtTick - currentTick);
     }
 
     public static (string Phase, double Progress, int CurrentX, int CurrentY) ComputePosition(

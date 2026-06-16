@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import BuildingImage from '@/components/buildings/BuildingImage'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { useGameUI } from '@/context/GameUIContext'
@@ -8,7 +9,10 @@ const BUILDING_ORDER = [
   'stone_mine',
   'timber_station',
   'bakery',
+  'storage_shed',
   'barracks',
+  'spy_academy',
+  'wall',
 ]
 
 function formatProduction(building) {
@@ -18,6 +22,42 @@ function formatProduction(building) {
 
   const resource = building.productionResource
   return `+${building.productionPerTick} ${resource}/tick`
+}
+
+function BuildingListItem({ building, isSelected, onSelect, production }) {
+  return (
+    <li className="h-28">
+      <button
+        type="button"
+        aria-label={building.name}
+        title={building.name}
+        onClick={() => onSelect(building.type)}
+        className={cn(
+          'grid h-full w-full grid-cols-[4fr_1fr] overflow-hidden rounded-md border text-left transition-colors',
+          isSelected
+            ? 'border-primary bg-primary/10'
+            : 'border-border bg-muted/30 hover:bg-muted/60',
+        )}
+      >
+        <div className="flex h-full min-h-0 items-center justify-center overflow-hidden p-2">
+          <BuildingImage
+            type={building.type}
+            level={building.level}
+            name={building.name}
+            size="fill"
+          />
+        </div>
+        <div className="grid h-full min-h-0 grid-rows-2 overflow-hidden border-l border-border/60">
+          <div className="flex items-center justify-center px-1 text-center text-sm font-medium leading-tight">
+            Lv {building.level}
+          </div>
+          <div className="flex items-center justify-center border-t border-border/60 px-1 text-center text-[10px] leading-tight text-muted-foreground">
+            {production ?? '—'}
+          </div>
+        </div>
+      </button>
+    </li>
+  )
 }
 
 function BuildingList() {
@@ -54,9 +94,13 @@ function BuildingList() {
       BUILDING_ORDER.indexOf(a.type) - BUILDING_ORDER.indexOf(b.type),
   )
 
+  const handleSelect = (buildingType) => {
+    setSelection({ type: 'building', id: buildingType })
+  }
+
   return (
-    <div className="flex h-full flex-col p-4">
-      <div className="mb-4">
+    <div className="flex h-full min-h-0 flex-col p-4">
+      <div className="mb-4 shrink-0">
         <h2 className="font-medium">{primaryCity.name}</h2>
         <p className="text-sm text-muted-foreground">
           ({primaryCity.x}, {primaryCity.y}) · Troops{' '}
@@ -65,41 +109,18 @@ function BuildingList() {
             .reduce((sum, t) => sum + t.quantity, 0)}
         </p>
       </div>
-      <ul className="space-y-2">
-        {buildings.map((building) => {
-          const isSelected =
-            selection?.type === 'building' && selection.id === building.type
-          const production = formatProduction(building)
-
-          return (
-            <li key={building.type}>
-              <button
-                type="button"
-                onClick={() =>
-                  setSelection({ type: 'building', id: building.type })
-                }
-                className={cn(
-                  'flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors',
-                  isSelected
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border bg-muted/30 hover:bg-muted/60',
-                )}
-              >
-                <span>
-                  <span className="font-medium">{building.name}</span>
-                  <span className="ml-2 text-muted-foreground">
-                    Lv {building.level}
-                  </span>
-                </span>
-                {production && (
-                  <span className="text-xs text-muted-foreground">
-                    {production}
-                  </span>
-                )}
-              </button>
-            </li>
-          )
-        })}
+      <ul className="grid min-h-0 flex-1 auto-rows-auto grid-cols-1 content-start items-start gap-2 overflow-y-auto md:grid-cols-2">
+        {buildings.map((building) => (
+          <BuildingListItem
+            key={building.type}
+            building={building}
+            isSelected={
+              selection?.type === 'building' && selection.id === building.type
+            }
+            onSelect={handleSelect}
+            production={formatProduction(building)}
+          />
+        ))}
       </ul>
     </div>
   )

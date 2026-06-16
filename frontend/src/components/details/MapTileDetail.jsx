@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import AttackTroopModal from '@/components/details/AttackTroopModal'
 import CityActionsList from '@/components/details/CityActionsList'
+import TroopMovementsList from '@/components/details/TroopMovementsList'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { api } from '@/lib/api'
@@ -154,6 +155,11 @@ function MapTileDetail({ selection }) {
       <CityActionsList
         cityId={isOwnCity ? cityAtTile?.id : primaryCity?.id}
         title={isOwnCity ? 'City actions' : 'Your city actions'}
+        ownedOnly
+      />
+
+      <TroopMovementsList
+        cityId={isOwnCity ? cityAtTile?.id : primaryCity?.id}
         ownedOnly
       />
 

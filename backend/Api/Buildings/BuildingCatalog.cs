@@ -26,7 +26,10 @@ public static class BuildingCatalog
         "stone_mine",
         "timber_station",
         "bakery",
+        "storage_shed",
         "barracks",
+        "spy_academy",
+        "wall",
     ];
 
     private static readonly Dictionary<string, BuildingDefinition> ByType = new(StringComparer.OrdinalIgnoreCase)
@@ -43,9 +46,18 @@ public static class BuildingCatalog
         ["bakery"] = new BuildingDefinition(
             "bakery", "Bakery", true, BuildingResource.Food, 3,
             new BuildingUpgradeCost(35, 25, 15, 10)),
+        ["storage_shed"] = new BuildingDefinition(
+            "storage_shed", "Storage Shed", false, null, 0,
+            new BuildingUpgradeCost(40, 35, 20, 15)),
         ["barracks"] = new BuildingDefinition(
             "barracks", "Barracks", false, null, 0,
             new BuildingUpgradeCost(60, 40, 25, 30)),
+        ["spy_academy"] = new BuildingDefinition(
+            "spy_academy", "Spy Academy", false, null, 0,
+            new BuildingUpgradeCost(50, 35, 30, 20)),
+        ["wall"] = new BuildingDefinition(
+            "wall", "Wall", false, null, 0,
+            new BuildingUpgradeCost(45, 50, 15, 10)),
     };
 
     public static bool IsValidType(string type) => ByType.ContainsKey(type);

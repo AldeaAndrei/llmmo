@@ -88,6 +88,9 @@ export const api = {
   getAttacks: (cityId) =>
     request(cityId ? `/attacks?city_id=${cityId}` : '/attacks'),
 
+  getTroopMovements: (cityId) =>
+    request(cityId ? `/attacks/movements?city_id=${cityId}` : '/attacks/movements'),
+
   previewAttack: (body) =>
     request('/attacks/preview', { method: 'POST', body: JSON.stringify(body) }),
 

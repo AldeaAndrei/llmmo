@@ -133,3 +133,24 @@
     @apply font-sans;
     }
 }
+
+@keyframes building-tier-up {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  35% {
+    transform: scale(1.12);
+    filter: brightness(1.25) drop-shadow(0 0 8px rgb(250 204 21 / 0.45));
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.animate-building-tier-up {
+  animation: building-tier-up 0.7s ease-out;
+}

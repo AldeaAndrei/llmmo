@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import CityActionsList from '@/components/details/CityActionsList'
+import TroopMovementsList from '@/components/details/TroopMovementsList'
 import TrainTroopModal from '@/components/details/TrainTroopModal'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
@@ -142,6 +143,8 @@ function BuildingDetail({ selection }) {
       )}
 
       <CityActionsList cityId={primaryCity?.id} ownedOnly />
+
+      <TroopMovementsList cityId={primaryCity?.id} ownedOnly />
 
       <TrainTroopModal
         open={trainOpen}

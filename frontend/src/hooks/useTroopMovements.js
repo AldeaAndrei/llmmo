@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import { useGameData } from '@/context/GameDataContext'
+import { useWorld } from '@/context/WorldContext'
 
-export function useCityActions(cityId) {
+const EMPTY_MOVEMENTS = { outgoing: [], incoming: [] }
+
+export function useTroopMovements(cityId) {
   const { actionRevision } = useGameData()
-  const [actions, setActions] = useState([])
+  const { currentTick } = useWorld()
+  const [movements, setMovements] = useState(EMPTY_MOVEMENTS)
   const [initialLoading, setInitialLoading] = useState(false)
   const [hasLoaded, setHasLoaded] = useState(false)
   const hasLoadedRef = useRef(false)
@@ -19,7 +23,7 @@ export function useCityActions(cityId) {
     let cancelled = false
 
     if (!cityId) {
-      setActions([])
+      setMovements(EMPTY_MOVEMENTS)
       setInitialLoading(false)
       setHasLoaded(false)
       hasLoadedRef.current = false
@@ -28,7 +32,7 @@ export function useCityActions(cityId) {
     }
 
     if (prevCityIdRef.current !== cityId) {
-      setActions([])
+      setMovements(EMPTY_MOVEMENTS)
       setHasLoaded(false)
       hasLoadedRef.current = false
       prevCityIdRef.current = cityId
@@ -42,14 +46,17 @@ export function useCityActions(cityId) {
 
     async function load() {
       try {
-        const data = await api.getActions(cityId)
+        const data = await api.getTroopMovements(cityId)
         if (cancelled) return
-        setActions(data)
+        setMovements({
+          outgoing: data.outgoing ?? [],
+          incoming: data.incoming ?? [],
+        })
         hasLoadedRef.current = true
         setHasLoaded(true)
       } catch {
         if (cancelled || hasLoadedRef.current) return
-        setActions([])
+        setMovements(EMPTY_MOVEMENTS)
       } finally {
         if (!cancelled && isInitialLoad) {
           setInitialLoading(false)
@@ -62,7 +69,7 @@ export function useCityActions(cityId) {
     return () => {
       cancelled = true
     }
-  }, [cityId, actionRevision, manualRevision])
+  }, [cityId, actionRevision, manualRevision, currentTick])
 
-  return { actions, loading: initialLoading, hasLoaded, refresh }
+  return { movements, loading: initialLoading, hasLoaded, refresh }
 }

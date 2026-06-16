@@ -65,6 +65,21 @@ public record AttackMapDto(
     AttackLocationDto Target,
     IReadOnlyList<TroopStackEntryDto> Troops);
 
+public record AttackMovementDto(
+    Guid Id,
+    string Type,
+    string Status,
+    string Phase,
+    string Direction,
+    AttackLocationDto Source,
+    AttackLocationDto Target,
+    IReadOnlyList<TroopStackEntryDto> Troops,
+    int RemainingTicks);
+
+public record TroopMovementsDto(
+    IReadOnlyList<AttackMovementDto> Outgoing,
+    IReadOnlyList<AttackMovementDto> Incoming);
+
 public record AttackLocationDto(int X, int Y, Guid? CityId);
 
 public record AttackCreatedDto(
