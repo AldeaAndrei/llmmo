@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "observedAtTick": 0,
+  "commands": [
+    { "type": "upgrade", "buildingType": "gold_mine" },
+    { "type": "train", "troopType": "spy", "count": 1 },
+    { "type": "train", "troopType": "soldier", "count": 1 }
+  ]
+}

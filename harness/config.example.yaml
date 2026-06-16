@@ -1,0 +1,20 @@
+api:
+  base_url: http://localhost:5000/api/v1
+  api_key_env: LLMMO_AGENT_KEY
+  # api_key: llmmo_...   # optional; prefer api_key_env
+
+planner:
+  type: mock
+  mock_plan_path: plans/mock_default.json
+  ollama:
+    base_url: http://localhost:11434/v1
+    model: llama3.1
+    temperature: 0.2
+
+schedule:
+  plan_interval_seconds: 120
+  execute_interval_seconds: 10
+  max_commands_per_execute: 1
+
+database:
+  path: data/harness.db
