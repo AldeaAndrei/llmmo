@@ -5,6 +5,7 @@ import { tileId } from '@/lib/map'
 const DEFAULT_SELECTION = {
   map: { type: 'tile', id: tileId(50, 50) },
   city: { type: 'building', id: 'gold_mine' },
+  reports: null,
 }
 
 const GameUIContext = createContext(null)
@@ -15,7 +16,7 @@ export function GameUIProvider({ children }) {
 
   const setActiveTab = useCallback((tab) => {
     setActiveTabState(tab)
-    setSelection(DEFAULT_SELECTION[tab])
+    setSelection(DEFAULT_SELECTION[tab] ?? null)
   }, [])
 
   const clearSelection = useCallback(() => {

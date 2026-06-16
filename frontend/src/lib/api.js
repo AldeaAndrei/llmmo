@@ -100,4 +100,7 @@ export const api = {
   getReports: () => request('/reports'),
 
   getReport: (reportId) => request(`/reports/${reportId}`),
+
+  markReportRead: (reportId) =>
+    request(`/reports/${reportId}/read`, { method: 'POST' }),
 }

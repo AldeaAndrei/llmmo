@@ -1,4 +1,5 @@
 using System.Text.Json;
+using llmmo.Api;
 using llmmo.Api.Dtos;
 using llmmo.Auth;
 using llmmo.Data;
@@ -12,6 +13,7 @@ public static class ReportEndpoints
     {
         group.MapGet("/reports", ListReports).RequireAuth();
         group.MapGet("/reports/{reportId:guid}", GetReport).RequireAuth();
+        group.MapPost("/reports/{reportId:guid}/read", MarkReportRead).RequireAuth();
         return group;
     }
 
@@ -49,6 +51,31 @@ public static class ReportEndpoints
         return Results.Ok(ToDto(report));
     }
 
+    private static async Task<IResult> MarkReportRead(
+        Guid reportId,
+        HttpContext httpContext,
+        AppDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var auth = httpContext.GetPlayerAuth()!;
+
+        var report = await db.Reports
+            .FirstOrDefaultAsync(r => r.Id == reportId && r.PlayerId == auth.PlayerId, cancellationToken);
+
+        if (report is null)
+        {
+            return Results.NotFound(new { error = "Report not found." });
+        }
+
+        if (report.ReadAt is null)
+        {
+            report.ReadAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return Results.Ok(ToDto(report));
+    }
+
     private static ReportDto ToDto(Entities.Report report) => new(
         report.Id,
         report.Type,
@@ -57,7 +84,7 @@ public static class ReportEndpoints
         report.TargetCityId,
         report.TargetX,
         report.TargetY,
-        JsonSerializer.Deserialize<object>(report.Payload) ?? new { },
+        ReportPayloadHelper.Deserialize(report.Payload),
         report.CreatedAt,
         report.ReadAt);
 }

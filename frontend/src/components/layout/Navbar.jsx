@@ -2,10 +2,12 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/context/AuthContext'
 import { useGameUI } from '@/context/GameUIContext'
+import { useReports } from '@/context/ReportsContext'
 
 function Navbar() {
   const { activeTab, setActiveTab } = useGameUI()
-  const { user, isHuman, logout } = useAuth()
+  const { user, isHuman, isAuthenticated, logout } = useAuth()
+  const { unreadCount } = useReports()
 
   return (
     <header className="flex items-center justify-between gap-4 border-b px-4 py-2">
@@ -13,6 +15,17 @@ function Navbar() {
         <TabsList>
           <TabsTrigger value="map">Map</TabsTrigger>
           <TabsTrigger value="city">City</TabsTrigger>
+          {isAuthenticated && (
+            <TabsTrigger value="reports" className="relative">
+              Reports
+              {unreadCount > 0 && (
+                <span
+                  className="absolute -top-0.5 right-0 size-2 rounded-full bg-destructive"
+                  aria-label={`${unreadCount} unread reports`}
+                />
+              )}
+            </TabsTrigger>
+          )}
           {isHuman && <TabsTrigger value="agents">Agents</TabsTrigger>}
         </TabsList>
       </Tabs>

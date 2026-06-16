@@ -1,4 +1,4 @@
-using System.Text.Json;
+using llmmo.Api;
 using llmmo.Api.Troops;
 using llmmo.Data;
 using llmmo.Entities;
@@ -73,13 +73,11 @@ public class AttackMovementService
             {
                 result = "intel",
                 spySurvived = spySurvives,
-                resources = new
-                {
+                resources = ReportPayloadHelper.ToResources(
                     targetCity.Wood,
                     targetCity.Stone,
                     targetCity.Gold,
-                    targetCity.Food,
-                },
+                    targetCity.Food),
                 troops = targetCity.Troops
                     .Where(t => t.Quantity > 0)
                     .Select(t => new { type = t.Type, quantity = t.Quantity })
@@ -105,7 +103,7 @@ public class AttackMovementService
             TargetCityId = attack.TargetCityId,
             TargetX = attack.TargetX,
             TargetY = attack.TargetY,
-            Payload = JsonSerializer.Serialize(payload),
+            Payload = ReportPayloadHelper.Serialize(payload),
         });
     }
 
@@ -232,7 +230,7 @@ public class AttackMovementService
             attackerCasualties = combat?.AttackerCasualties.Select(t => new { type = t.Type, count = t.Count }),
             defenderCasualties = combat?.DefenderCasualties,
             survivors = survivors.Select(t => new { type = t.Type, count = t.Count }),
-            loot = new { loot.Wood, loot.Stone, loot.Gold, loot.Food },
+            loot = ReportPayloadHelper.ToLoot(loot.Wood, loot.Stone, loot.Gold, loot.Food),
         };
 
         _db.Reports.Add(new Report
@@ -245,7 +243,7 @@ public class AttackMovementService
             TargetCityId = attack.TargetCityId,
             TargetX = attack.TargetX,
             TargetY = attack.TargetY,
-            Payload = JsonSerializer.Serialize(payload),
+            Payload = ReportPayloadHelper.Serialize(payload),
         });
     }
 }

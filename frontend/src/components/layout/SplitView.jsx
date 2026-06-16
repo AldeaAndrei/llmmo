@@ -2,6 +2,7 @@ import { useGameUI } from '@/context/GameUIContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import MapGrid from '@/components/map/MapGrid'
 import BuildingList from '@/components/city/BuildingList'
+import ReportsList from '@/components/reports/ReportsList'
 import AgentsPanel from '@/components/agents/AgentsPanel'
 import DetailPanel from '@/components/details/DetailPanel'
 import {
@@ -16,7 +17,13 @@ function SplitView() {
   const isMobile = useIsMobile()
 
   const LeftPanel =
-    activeTab === 'map' ? MapGrid : activeTab === 'city' ? BuildingList : AgentsPanel
+    activeTab === 'map'
+      ? MapGrid
+      : activeTab === 'city'
+        ? BuildingList
+        : activeTab === 'reports'
+          ? ReportsList
+          : AgentsPanel
 
   const showDetailPanel = activeTab !== 'agents'
 
