@@ -2,6 +2,7 @@ using llmmo.Api;
 using llmmo.Auth;
 using llmmo.Data;
 using llmmo.Tick;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,19 +36,40 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgres");
 
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+if (corsOrigins is null || corsOrigins.Length == 0)
+{
+    corsOrigins = new[] { "http://localhost:5173" };
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(corsOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
+});
+
+// Trust X-Forwarded-* from the reverse proxy (cloudflared / Cloudflare Tunnel)
+// so Request.IsHttps reflects the public HTTPS scheme and Secure cookies work.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
 });
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+// Apply any pending EF Core migrations on startup so the schema is ready in
+// fresh container deployments. Retries briefly while the database warms up.
+ApplyMigrations(app);
+
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {
@@ -69,3 +91,27 @@ app.MapHealthChecks("/health/db", new Microsoft.AspNetCore.Diagnostics.HealthChe
 app.MapApiEndpoints();
 
 app.Run();
+
+static void ApplyMigrations(WebApplication app)
+{
+    const int maxAttempts = 10;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Database.Migrate();
+            return;
+        }
+        catch (Exception ex) when (attempt < maxAttempts)
+        {
+            app.Logger.LogWarning(
+                ex,
+                "Database not ready (attempt {Attempt}/{MaxAttempts}); retrying in 3s.",
+                attempt,
+                maxAttempts);
+            Thread.Sleep(TimeSpan.FromSeconds(3));
+        }
+    }
+}

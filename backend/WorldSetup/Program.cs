@@ -4,11 +4,11 @@ using llmmo.WorldSetup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-var backendDir = FindBackendDirectory();
+var backendDir = FindBackendDirectory() ?? AppContext.BaseDirectory;
 
 var configuration = new ConfigurationBuilder()
     .SetBasePath(backendDir)
-    .AddJsonFile("appsettings.json", optional: false)
+    .AddJsonFile("appsettings.json", optional: true)
     .AddJsonFile("appsettings.Development.json", optional: true)
     .AddEnvironmentVariables()
     .Build();
@@ -21,6 +21,9 @@ var options = new DbContextOptionsBuilder<AppDbContext>()
     .Options;
 
 await using var db = new AppDbContext(options);
+
+Console.WriteLine("Applying database migrations...");
+await db.Database.MigrateAsync();
 
 Console.WriteLine("Resetting world and seeding demo data...");
 Console.WriteLine();
@@ -39,7 +42,7 @@ Console.WriteLine(
 Console.WriteLine("Default login: admin@yahoo.com / test1234");
 Console.WriteLine("Try GET http://localhost:5000/api/v1/map");
 
-static string FindBackendDirectory()
+static string? FindBackendDirectory()
 {
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (dir is not null)
@@ -52,5 +55,5 @@ static string FindBackendDirectory()
         dir = dir.Parent;
     }
 
-    throw new InvalidOperationException("Could not find backend directory (llmmo.csproj).");
+    return null;
 }

@@ -1,0 +1,20 @@
+api:
+  # Reaches the backend over the internal Docker network.
+  base_url: http://backend:8080/api/v1
+  api_key_env: LLMMO_AGENT_KEY
+
+planner:
+  type: ollama
+  mock_plan_path: plans/mock_default.json
+  ollama:
+    base_url: http://ollama:11434/v1
+    model: llama3.1
+    temperature: 0.2
+
+schedule:
+  plan_interval_seconds: 120
+  execute_interval_seconds: 10
+  max_commands_per_execute: 1
+
+database:
+  path: /data/harness.db
