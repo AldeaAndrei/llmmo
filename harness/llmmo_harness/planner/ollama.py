@@ -6,7 +6,7 @@ import httpx
 from llmmo_harness.client import GameClient
 from llmmo_harness.config import OllamaConfig
 from llmmo_harness.schema import BUILDING_TYPES, CommandPlan, TROOP_TYPES
-from llmmo_harness.state import resolve_first_city
+from llmmo_harness.state import compact_planner_state, resolve_first_city
 
 SYSTEM_PROMPT = """You are a game agent planner for LLMMO.
 Output ONLY valid JSON matching this schema (no markdown, no commentary):
@@ -46,18 +46,14 @@ class OllamaPlanner:
         troops = client.get_troop_catalog()
 
         observed_tick = int(world.get("currentTick", 0))
-        state = {
-            "world": world,
-            "city": city,
-            "troopCatalog": troops,
-        }
+        state = compact_planner_state(world, city, troops)
 
         system = SYSTEM_PROMPT.format(
             buildings=", ".join(sorted(BUILDING_TYPES)),
             troops=", ".join(sorted(TROOP_TYPES)),
         )
         user_content = (
-            f"Current game state:\n{json.dumps(state, indent=2)}\n\n"
+            f"Current game state:\n{json.dumps(state, separators=(',', ':'))}\n\n"
             f"Set observedAtTick to {observed_tick}. "
             "Return a short plan with upgrade and train commands."
         )
@@ -72,7 +68,7 @@ class OllamaPlanner:
             ],
         }
 
-        with httpx.Client(timeout=120.0) as http:
+        with httpx.Client(timeout=self.config.request_timeout_seconds) as http:
             response = http.post(url, json=payload)
             response.raise_for_status()
             data = response.json()
