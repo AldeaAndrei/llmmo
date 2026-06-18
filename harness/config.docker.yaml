@@ -8,7 +8,7 @@ planner:
   mock_plan_path: plans/mock_default.json
   ollama:
     # Standalone Ollama running on the host (separate compose), published on 11434.
-    base_url: http://host.docker.internal:11434/v1
+    base_url: http://ollama:11434/v1
     model: llama3.2:3b
     temperature: 0.2
 
