@@ -10,6 +10,7 @@ planner:
     base_url: http://localhost:11434/v1
     model: llama3.1
     temperature: 0.2
+    request_timeout_seconds: 300
 
 schedule:
   plan_interval_seconds: 120

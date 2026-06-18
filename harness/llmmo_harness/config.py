@@ -17,6 +17,7 @@ class OllamaConfig:
     base_url: str = "http://localhost:11434/v1"
     model: str = "llama3.1"
     temperature: float = 0.2
+    request_timeout_seconds: float = 300.0
 
 
 @dataclass
@@ -87,6 +88,12 @@ def load_config(path: Path) -> HarnessConfig:
                 base_url=ollama_raw.get("base_url", OllamaConfig.base_url),
                 model=ollama_raw.get("model", OllamaConfig.model),
                 temperature=float(ollama_raw.get("temperature", 0.2)),
+                request_timeout_seconds=float(
+                    ollama_raw.get(
+                        "request_timeout_seconds",
+                        OllamaConfig.request_timeout_seconds,
+                    )
+                ),
             ),
         ),
         schedule=ScheduleConfig(
