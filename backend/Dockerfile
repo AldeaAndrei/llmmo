@@ -29,4 +29,4 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS seed
 WORKDIR /app
 COPY --from=build /app/seed ./
 ENV DOTNET_ENVIRONMENT=Production
-ENTRYPOINT ["dotnet", "llmmo.WorldSetup.dll"]
+ENTRYPOINT ["dotnet", "WorldSetup.dll"]

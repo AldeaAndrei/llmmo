@@ -11,14 +11,14 @@ from llmmo_harness.state import resolve_first_city
 SYSTEM_PROMPT = """You are a game agent planner for LLMMO.
 Output ONLY valid JSON matching this schema (no markdown, no commentary):
 
-{
+{{
   "schemaVersion": 1,
   "observedAtTick": <number>,
   "commands": [
-    { "type": "upgrade", "buildingType": "<building>" },
-    { "type": "train", "troopType": "<troop>", "count": <positive int> }
+    {{ "type": "upgrade", "buildingType": "<building>" }},
+    {{ "type": "train", "troopType": "<troop>", "count": <positive int> }}
   ]
-}
+}}
 
 Allowed buildingType values: {buildings}
 Allowed troopType values: {troops}
