@@ -18,6 +18,7 @@ class OllamaConfig:
     model: str = "llama3.1"
     temperature: float = 0.2
     request_timeout_seconds: float = 300.0
+    log_prompts: bool = False
 
 
 @dataclass
@@ -94,6 +95,7 @@ def load_config(path: Path) -> HarnessConfig:
                         OllamaConfig.request_timeout_seconds,
                     )
                 ),
+                log_prompts=bool(ollama_raw.get("log_prompts", False)),
             ),
         ),
         schedule=ScheduleConfig(

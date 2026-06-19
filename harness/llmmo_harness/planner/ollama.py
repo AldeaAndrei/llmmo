@@ -52,6 +52,26 @@ def _extract_json(text: str) -> str:
     return text
 
 
+def _log_llm_exchange(
+    *,
+    model: str,
+    system: str,
+    user: str,
+    response: str,
+) -> None:
+    divider = "=" * 60
+    print(divider, flush=True)
+    print(f"OLLAMA PLAN  model={model}", flush=True)
+    print(divider, flush=True)
+    print("--- system ---", flush=True)
+    print(system, flush=True)
+    print("--- user ---", flush=True)
+    print(user, flush=True)
+    print("--- response ---", flush=True)
+    print(response, flush=True)
+    print(divider, flush=True)
+
+
 class OllamaPlanner:
     def __init__(self, config: OllamaConfig, memory: DecisionMemory) -> None:
         self.config = config
@@ -104,6 +124,13 @@ class OllamaPlanner:
             data = response.json()
 
         content = data["choices"][0]["message"]["content"]
+        if self.config.log_prompts:
+            _log_llm_exchange(
+                model=self.config.model,
+                system=system,
+                user=user_content,
+                response=content,
+            )
         raw = json.loads(_extract_json(content))
         raw["observedAtTick"] = observed_tick
         return CommandPlan.model_validate(raw)

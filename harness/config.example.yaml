@@ -11,6 +11,7 @@ planner:
     model: llama3.1
     temperature: 0.2
     request_timeout_seconds: 300
+    log_prompts: false   # set true to print system/user prompt and model response
 
 schedule:
   plan_interval_seconds: 120

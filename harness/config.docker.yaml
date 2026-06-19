@@ -12,6 +12,7 @@ planner:
     model: llama3.2:3b
     temperature: 0.2
     request_timeout_seconds: 300
+    log_prompts: true
 
 schedule:
   plan_interval_seconds: 120
