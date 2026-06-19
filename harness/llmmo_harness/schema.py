@@ -30,6 +30,7 @@ def set_building_types(types: set[str] | frozenset[str]) -> None:
 class UpgradeCommand(BaseModel):
     type: Literal["upgrade"] = "upgrade"
     buildingType: str
+    reason: str = Field(min_length=1, max_length=500)
 
     @field_validator("buildingType")
     @classmethod
@@ -43,6 +44,7 @@ class TrainCommand(BaseModel):
     type: Literal["train"] = "train"
     troopType: str
     count: int = 1
+    reason: str = Field(min_length=1, max_length=500)
 
     @field_validator("troopType")
     @classmethod

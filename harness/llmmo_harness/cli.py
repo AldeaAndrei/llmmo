@@ -7,17 +7,22 @@ from pathlib import Path
 from llmmo_harness.client import GameClient
 from llmmo_harness.config import HarnessConfig, load_config
 from llmmo_harness.executor import execute_pending
+from llmmo_harness.memory import DecisionMemory
 from llmmo_harness.planner.mock import MockPlanner
 from llmmo_harness.planner.ollama import OllamaPlanner
 from llmmo_harness.queue import CommandQueue
 from llmmo_harness.state import resolve_first_city_id
 
 
-def _build_planner(config: HarnessConfig):
+def _memory(config: HarnessConfig) -> DecisionMemory:
+    return DecisionMemory(config.resolve_path(config.database.path))
+
+
+def _build_planner(config: HarnessConfig, memory: DecisionMemory):
     if config.planner.type == "mock":
         return MockPlanner(config.resolve_path(config.planner.mock_plan_path))
     if config.planner.type == "ollama":
-        return OllamaPlanner(config.planner.ollama)
+        return OllamaPlanner(config.planner.ollama, memory)
     raise ValueError(f"Unknown planner type: {config.planner.type}")
 
 
@@ -25,7 +30,8 @@ def cmd_plan(config: HarnessConfig) -> int:
     api_key = config.resolve_api_key()
     client = GameClient(config.api.base_url, api_key)
     queue = CommandQueue(config.resolve_path(config.database.path))
-    planner = _build_planner(config)
+    memory = _memory(config)
+    planner = _build_planner(config, memory)
 
     try:
         plan = planner.plan(client)
@@ -46,11 +52,13 @@ def cmd_execute(config: HarnessConfig) -> int:
     api_key = config.resolve_api_key()
     client = GameClient(config.api.base_url, api_key)
     queue = CommandQueue(config.resolve_path(config.database.path))
+    memory = _memory(config)
 
     try:
         count = execute_pending(
             client,
             queue,
+            memory,
             max_commands=config.schedule.max_commands_per_execute,
         )
     except Exception as error:
@@ -79,6 +87,9 @@ def cmd_log(config: HarnessConfig, last: int) -> int:
             print(f"  error: {row['error_message']}")
         try:
             request = json.loads(row["request_json"])
+            reason = request.get("payload", {}).get("reason")
+            if reason:
+                print(f"  why: {reason}")
             print(f"  request: {json.dumps(request)}")
         except json.JSONDecodeError:
             print(f"  request: {row['request_json']}")

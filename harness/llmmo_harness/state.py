@@ -1,6 +1,17 @@
 from llmmo_harness.client import GameClient
 
 
+def format_recent_decisions(records: list) -> list[dict]:
+    return [
+        {
+            "tick": record.tick,
+            "action": record.action,
+            "reason": record.reason,
+        }
+        for record in records
+    ]
+
+
 def compact_planner_state(world: dict, city: dict, troop_catalog: list[dict]) -> dict:
     """Minimal state for the LLM planner — full API payloads are very token-heavy."""
     resources = city.get("resources") or {}
@@ -40,14 +51,14 @@ def compact_planner_state(world: dict, city: dict, troop_catalog: list[dict]) ->
     }
 
 
-def resolve_first_city(client: GameClient) -> dict:
+def resolve_first_city(client) -> dict:
     cities = client.get_cities_me()
     if not cities:
         raise ValueError("No cities found for this agent.")
     return cities[0]
 
 
-def resolve_first_city_id(client: GameClient) -> str:
+def resolve_first_city_id(client) -> str:
     city = resolve_first_city(client)
     city_id = city.get("id")
     if not city_id:

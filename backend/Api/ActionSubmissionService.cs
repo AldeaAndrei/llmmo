@@ -75,7 +75,7 @@ public class ActionSubmissionService
 
         if (ActionDurations.IsUpgradeSlotType(normalizedType))
         {
-            var upgradeResult = ValidateUpgrade(city, buildingType, out cost, out payloadJson);
+            var upgradeResult = ValidateUpgrade(city, buildingType, payloadElement, out cost, out payloadJson);
             if (upgradeResult is not null)
             {
                 return (null, upgradeResult);
@@ -150,11 +150,19 @@ public class ActionSubmissionService
     private static string? ValidateUpgrade(
         City city,
         string? buildingType,
+        JsonElement payloadElement,
         out BuildingUpgradeCost cost,
         out string payloadJson)
     {
         cost = new BuildingUpgradeCost(0, 0, 0, 0);
         payloadJson = "{}";
+
+        var reason = ActionPayloadHelper.GetReason(payloadElement);
+        var reasonError = ActionPayloadHelper.ValidateReason(reason);
+        if (reasonError is not null)
+        {
+            return reasonError;
+        }
 
         if (string.IsNullOrWhiteSpace(buildingType) || !BuildingCatalog.IsValidType(buildingType))
         {
@@ -178,6 +186,7 @@ public class ActionSubmissionService
         payloadJson = ActionPayloadHelper.SerializePayload(new
         {
             buildingType = building.Type,
+            reason,
             deducted = new { cost.Wood, cost.Stone, cost.Gold, cost.Food },
         });
 
@@ -193,6 +202,13 @@ public class ActionSubmissionService
     {
         cost = new BuildingUpgradeCost(0, 0, 0, 0);
         payloadJson = "{}";
+
+        var reason = ActionPayloadHelper.GetReason(payloadElement);
+        var reasonError = ActionPayloadHelper.ValidateReason(reason);
+        if (reasonError is not null)
+        {
+            return reasonError;
+        }
 
         if (!string.Equals(buildingType, "barracks", StringComparison.OrdinalIgnoreCase))
         {
@@ -236,6 +252,7 @@ public class ActionSubmissionService
             buildingType = "barracks",
             troopType,
             count,
+            reason,
             deducted = new { cost.Wood, cost.Stone, cost.Gold, cost.Food },
         });
 
