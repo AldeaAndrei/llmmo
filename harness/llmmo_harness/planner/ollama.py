@@ -14,32 +14,32 @@ from llmmo_harness.state import (
     resolve_first_city_id,
 )
 
-SYSTEM_PROMPT = """You are a game agent planner for LLMMO.
-Output ONLY valid JSON matching this schema (no markdown, no commentary):
+SYSTEM_PROMPT = """You are a strategic planner for LLMMO, a tick-based city builder.
+Output ONLY valid JSON (no markdown, no commentary outside the JSON).
 
+Schema:
 {{
   "schemaVersion": 1,
   "observedAtTick": <number>,
   "commands": [
-    {{
-      "type": "upgrade",
-      "buildingType": "<building>",
-      "reason": "<1-2 sentences grounded in game state>"
-    }},
-    {{
-      "type": "train",
-      "troopType": "<troop>",
-      "count": <positive int>,
-      "reason": "<1-2 sentences grounded in game state>"
-    }}
+    {{ "type": "upgrade", "buildingType": "<building>", "reason": "<1-2 sentences>" }},
+    {{ "type": "train", "troopType": "<troop>", "count": <positive int>, "reason": "<1-2 sentences>" }}
   ]
 }}
 
-Allowed buildingType values: {buildings}
-Allowed troopType values: {troops}
-Allowed command types: upgrade, train
-Every command MUST include a reason (1-2 sentences) explaining why, based on resources, building levels, and troops.
-Do not include cityId. Prefer economical upgrades and small troop training.
+Allowed buildingType: {buildings}
+Allowed troopType: {troops}
+Command types: upgrade, train only. Do not include cityId.
+
+Planning rules (follow strictly):
+1. Read the JSON state carefully. Each building has "level" and "nextUpgradeCost".
+2. Only schedule an upgrade if you can afford nextUpgradeCost with current resources (wood, stone, gold, food).
+3. In your reason, name the CURRENT level and the TARGET level (e.g. "barracks L7→L8", not "to L8" when already L8).
+4. Do not repeat the same buildingType or troopType as your last two decisions unless resources and strategy clearly require it.
+5. Balance the economy: upgrade production (mines, bakery), storage_shed, wall, spy_academy — not barracks every turn.
+6. Train troops only when you have food/gold headroom. Respect barracks capacity: 4 × barracks level per train action.
+7. Prefer 1–3 commands per plan. Each reason must be specific to this tick (no copy-paste from memory).
+8. If nothing is affordable, pick the cheapest useful upgrade or skip train this cycle.
 """
 
 
@@ -99,12 +99,12 @@ class OllamaPlanner:
         ]
         if recent:
             user_parts.append(
-                "Avoid repeating the same action unless still optimal. "
-                f"Your last decisions:\n{json.dumps(recent, separators=(',', ':'))}"
+                "Your last two executed decisions (avoid repeating unless still optimal):\n"
+                f"{json.dumps(recent, separators=(',', ':'))}"
             )
         user_parts.append(
             f"Set observedAtTick to {observed_tick}. "
-            "Return a short plan with upgrade and train commands."
+            "Return a plan with 1–3 commands. Check affordability before every upgrade."
         )
         user_content = "\n\n".join(user_parts)
 
