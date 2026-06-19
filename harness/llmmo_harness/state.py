@@ -12,6 +12,39 @@ def format_recent_decisions(records: list) -> list[dict]:
     ]
 
 
+def compact_possible_actions(actions: dict) -> dict:
+    """Trim possible-actions payload for the LLM prompt."""
+    return {
+        "currentTick": actions.get("currentTick"),
+        "resources": actions.get("resources"),
+        "foodProductionPerTick": actions.get("foodProductionPerTick"),
+        "foodUpkeepPerTick": actions.get("foodUpkeepPerTick"),
+        "troops": actions.get("troops", []),
+        "upgrades": [
+            {
+                "buildingType": upgrade["buildingType"],
+                "fromLevel": upgrade["fromLevel"],
+                "toLevel": upgrade["toLevel"],
+            }
+            for upgrade in actions.get("upgrades", [])
+        ],
+        "train": [
+            {"troopType": option["troopType"], "count": option["count"]}
+            for option in actions.get("train", [])
+        ],
+        "attacks": [
+            {
+                "targetCityId": attack["targetCityId"],
+                "targetName": attack["targetName"],
+                "targetX": attack["targetX"],
+                "targetY": attack["targetY"],
+                "troops": attack.get("troops", []),
+            }
+            for attack in actions.get("attacks", [])
+        ],
+    }
+
+
 def compact_planner_state(world: dict, city: dict, troop_catalog: list[dict]) -> dict:
     """Minimal state for the LLM planner — full API payloads are very token-heavy."""
     resources = city.get("resources") or {}

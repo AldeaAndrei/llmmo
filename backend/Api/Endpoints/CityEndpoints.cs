@@ -11,6 +11,7 @@ public static class CityEndpoints
     {
         group.MapGet("/cities/me", GetMyCities).RequireAuth();
         group.MapGet("/cities/{cityId:guid}", GetCity);
+        group.MapGet("/cities/{cityId:guid}/possible-actions", GetPossibleActions).RequireAuth();
         return group;
     }
 
@@ -80,5 +81,35 @@ public static class CityEndpoints
         }
 
         return Results.Ok(CityMapper.ToVisibilityDto(city, "public", null, null));
+    }
+
+    private static async Task<IResult> GetPossibleActions(
+        Guid cityId,
+        HttpContext httpContext,
+        PossibleActionsService possibleActions,
+        CancellationToken cancellationToken)
+    {
+        var auth = httpContext.GetPlayerAuth()!;
+        var (result, error) = await possibleActions.GetForCityAsync(
+            auth.PlayerId,
+            cityId,
+            cancellationToken);
+
+        if (error is not null)
+        {
+            if (error.Equals("Forbidden.", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            if (error.Equals("City not found.", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.NotFound(new { error });
+            }
+
+            return Results.Problem(error, statusCode: StatusCodes.Status500InternalServerError);
+        }
+
+        return Results.Ok(result);
     }
 }

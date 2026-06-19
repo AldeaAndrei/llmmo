@@ -87,7 +87,7 @@ def cmd_log(config: HarnessConfig, last: int) -> int:
             print(f"  error: {row['error_message']}")
         try:
             request = json.loads(row["request_json"])
-            reason = request.get("payload", {}).get("reason")
+            reason = request.get("payload", {}).get("reason") or request.get("reason")
             if reason:
                 print(f"  why: {reason}")
             print(f"  request: {json.dumps(request)}")

@@ -6,11 +6,10 @@ import httpx
 from llmmo_harness.client import GameClient
 from llmmo_harness.config import OllamaConfig
 from llmmo_harness.memory import DecisionMemory
-from llmmo_harness.schema import BUILDING_TYPES, CommandPlan, TROOP_TYPES, set_building_types
+from llmmo_harness.schema import CommandPlan, TrainCommand, UpgradeCommand
 from llmmo_harness.state import (
-    compact_planner_state,
+    compact_possible_actions,
     format_recent_decisions,
-    resolve_first_city,
     resolve_first_city_id,
 )
 
@@ -23,23 +22,20 @@ Schema:
   "observedAtTick": <number>,
   "commands": [
     {{ "type": "upgrade", "buildingType": "<building>", "reason": "<1-2 sentences>" }},
-    {{ "type": "train", "troopType": "<troop>", "count": <positive int>, "reason": "<1-2 sentences>" }}
+    {{ "type": "train", "troopType": "soldier"|"spy", "count": 1, "reason": "<1-2 sentences>" }},
+    {{ "type": "attack", "targetCityId": "<uuid>", "troopType": "soldier", "count": 1, "reason": "<1-2 sentences>" }}
   ]
 }}
 
-Allowed buildingType: {buildings}
-Allowed troopType: {troops}
-Command types: upgrade, train only. Do not include cityId.
-
 Planning rules (follow strictly):
-1. Read the JSON state carefully. Each building has "level" and "nextUpgradeCost".
-2. Only schedule an upgrade if you can afford nextUpgradeCost with current resources (wood, stone, gold, food).
-3. In your reason, name the CURRENT level and the TARGET level (e.g. "barracks L7→L8", not "to L8" when already L8).
-4. Do not repeat the same buildingType or troopType as your last two decisions unless resources and strategy clearly require it.
-5. Balance the economy: upgrade production (mines, bakery), storage_shed, wall, spy_academy — not barracks every turn.
-6. Train troops only when you have food/gold headroom. Respect barracks capacity: 4 × barracks level per train action.
-7. Prefer 1–3 commands per plan. Each reason must be specific to this tick (no copy-paste from memory).
-8. If nothing is affordable, pick the cheapest useful upgrade or skip train this cycle.
+1. You may ONLY choose commands that appear in the Possible actions section below.
+2. For upgrade, use a buildingType from possibleActions.upgrades.
+3. For train, use troopType/count exactly as listed in possibleActions.train (always count 1).
+4. For attack, copy targetCityId and troops from one entry in possibleActions.attacks.
+5. Prefer 1–2 commands per plan. If every list is empty, return an empty commands array.
+6. In upgrade reasons, name fromLevel→toLevel from the matching upgrade entry.
+7. Do not repeat the same action as your last two decisions unless still clearly optimal.
+8. Each reason must be specific to this tick (no copy-paste).
 """
 
 
@@ -78,24 +74,20 @@ class OllamaPlanner:
         self.memory = memory
 
     def plan(self, client: GameClient) -> CommandPlan:
-        world = client.get_world()
-        city = resolve_first_city(client)
         city_id = resolve_first_city_id(client)
-        troops = client.get_troop_catalog()
         buildings = client.get_building_catalog()
         set_building_types(entry["type"] for entry in buildings)
 
-        observed_tick = int(world.get("currentTick", 0))
-        state = compact_planner_state(world, city, troops)
+        possible = client.get_possible_actions(city_id)
+        observed_tick = int(possible.get("currentTick", 0))
+        prompt_actions = compact_possible_actions(possible)
         recent = format_recent_decisions(self.memory.get_recent(city_id, limit=2))
 
-        system = SYSTEM_PROMPT.format(
-            buildings=", ".join(sorted(BUILDING_TYPES)),
-            troops=", ".join(sorted(TROOP_TYPES)),
-        )
+        system = SYSTEM_PROMPT
 
         user_parts = [
-            f"Current game state:\n{json.dumps(state, separators=(',', ':'))}",
+            "Possible actions (only these commands are valid right now):\n"
+            f"{json.dumps(prompt_actions, separators=(',', ':'))}",
         ]
         if recent:
             user_parts.append(
@@ -104,7 +96,7 @@ class OllamaPlanner:
             )
         user_parts.append(
             f"Set observedAtTick to {observed_tick}. "
-            "Return a plan with 1–3 commands. Check affordability before every upgrade."
+            "Return a plan with 0–2 commands taken only from Possible actions."
         )
         user_content = "\n\n".join(user_parts)
 

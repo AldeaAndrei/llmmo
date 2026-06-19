@@ -19,12 +19,12 @@ class ExecutorReasonTests(unittest.TestCase):
         command = TrainCommand(
             type="train",
             troopType="soldier",
-            count=2,
+            count=1,
             reason="Need troops",
         )
         action_type, payload = build_action_request("city-1", command)
         self.assertEqual("train", action_type)
-        self.assertEqual(2, payload["count"])
+        self.assertEqual(1, payload["count"])
         self.assertEqual("Need troops", payload["reason"])
 
 

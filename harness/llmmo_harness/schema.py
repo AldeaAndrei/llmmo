@@ -19,7 +19,7 @@ BUILDING_TYPES = DEFAULT_BUILDING_TYPES
 
 TROOP_TYPES = frozenset({"soldier", "spy"})
 
-COMMAND_TYPES = frozenset({"upgrade", "train"})
+COMMAND_TYPES = frozenset({"upgrade", "train", "attack"})
 
 
 def set_building_types(types: set[str] | frozenset[str]) -> None:
@@ -56,13 +56,35 @@ class TrainCommand(BaseModel):
     @field_validator("count")
     @classmethod
     def validate_count(cls, value: int) -> int:
-        if value <= 0:
-            raise ValueError("count must be greater than zero")
+        if value != 1:
+            raise ValueError("count must be 1 for train commands")
+        return value
+
+
+class AttackCommand(BaseModel):
+    type: Literal["attack"] = "attack"
+    targetCityId: str
+    troopType: str = "soldier"
+    count: int = 1
+    reason: str = Field(min_length=1, max_length=500)
+
+    @field_validator("troopType")
+    @classmethod
+    def validate_troop(cls, value: str) -> str:
+        if value not in TROOP_TYPES:
+            raise ValueError(f"Invalid troopType: {value}")
+        return value
+
+    @field_validator("count")
+    @classmethod
+    def validate_count(cls, value: int) -> int:
+        if value != 1:
+            raise ValueError("count must be 1 for attack commands")
         return value
 
 
 Command = Annotated[
-    Union[UpgradeCommand, TrainCommand],
+    Union[UpgradeCommand, TrainCommand, AttackCommand],
     Field(discriminator="type"),
 ]
 
@@ -70,7 +92,7 @@ Command = Annotated[
 class CommandPlan(BaseModel):
     schemaVersion: int = 1
     observedAtTick: int = 0
-    commands: list[UpgradeCommand | TrainCommand] = Field(default_factory=list)
+    commands: list[UpgradeCommand | TrainCommand | AttackCommand] = Field(default_factory=list)
 
     @field_validator("schemaVersion")
     @classmethod

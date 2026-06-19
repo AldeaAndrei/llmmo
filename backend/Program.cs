@@ -20,6 +20,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AgentManagementService>();
 builder.Services.AddScoped<ActionSubmissionService>();
 builder.Services.AddScoped<AttackSubmissionService>();
+builder.Services.AddScoped<PossibleActionsService>();
 builder.Services.AddScoped<IntelService>();
 builder.Services.AddScoped<ActionCompleter>();
 builder.Services.AddScoped<CombatResolver>();

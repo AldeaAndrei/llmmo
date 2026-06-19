@@ -43,6 +43,19 @@ class GameClient:
             raise GameApiError(response.status_code, response.text)
         return response.json()
 
+    def get_possible_actions(self, city_id: str) -> dict:
+        response = self._request("GET", f"/cities/{city_id}/possible-actions")
+        if response.status_code != 200:
+            error_body: dict | str
+            try:
+                error_body = response.json()
+                message = error_body.get("error", response.text)
+            except Exception:
+                error_body = response.text
+                message = response.text
+            raise GameApiError(response.status_code, message, error_body)
+        return response.json()
+
     def get_troop_catalog(self) -> list[dict]:
         response = self._request("GET", "/catalog/troops")
         if response.status_code != 200:
@@ -62,6 +75,31 @@ class GameClient:
             "payload": payload,
         }
         response = self._request("POST", "/actions", json_body=body)
+        if response.status_code == 201:
+            return response.json()
+        error_body: dict | str
+        try:
+            error_body = response.json()
+            message = error_body.get("error", response.text)
+        except Exception:
+            error_body = response.text
+            message = response.text
+        raise GameApiError(response.status_code, message, error_body)
+
+    def create_attack(
+        self,
+        source_city_id: str,
+        target_city_id: str,
+        troop_type: str,
+        count: int,
+    ) -> dict:
+        body = {
+            "sourceCityId": source_city_id,
+            "targetCityId": target_city_id,
+            "type": "attack",
+            "troops": [{"type": troop_type, "count": count}],
+        }
+        response = self._request("POST", "/attacks", json_body=body)
         if response.status_code == 201:
             return response.json()
         error_body: dict | str
