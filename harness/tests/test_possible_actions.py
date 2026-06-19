@@ -1,0 +1,67 @@
+from llmmo_harness.executor import command_action_dict
+from llmmo_harness.schema import AttackCommand
+from llmmo_harness.state import compact_possible_actions
+import unittest
+
+
+class ExecutorAttackTests(unittest.TestCase):
+    def test_command_action_dict_includes_attack_fields(self) -> None:
+        command = AttackCommand(
+            type="attack",
+            targetCityId="00000000-0000-0000-0000-000000000001",
+            troopType="soldier",
+            count=1,
+            reason="Weak neighbour",
+        )
+        action = command_action_dict(command)
+        self.assertEqual("attack", action["type"])
+        self.assertEqual("00000000-0000-0000-0000-000000000001", action["targetCityId"])
+        self.assertEqual("soldier", action["troopType"])
+        self.assertEqual(1, action["count"])
+
+
+class CompactPossibleActionsTests(unittest.TestCase):
+    def test_compact_possible_actions_strips_costs(self) -> None:
+        raw = {
+            "currentTick": 100,
+            "resources": {"wood": 10, "stone": 10, "gold": 10, "food": 0},
+            "foodProductionPerTick": 3,
+            "foodUpkeepPerTick": 3,
+            "troops": [{"type": "spy", "count": 2}],
+            "upgrades": [
+                {
+                    "buildingType": "bakery",
+                    "fromLevel": 1,
+                    "toLevel": 2,
+                    "cost": {"wood": 70, "stone": 50, "gold": 30, "food": 20},
+                }
+            ],
+            "train": [
+                {
+                    "troopType": "soldier",
+                    "count": 1,
+                    "cost": {"wood": 0, "stone": 0, "gold": 1, "food": 1},
+                }
+            ],
+            "attacks": [
+                {
+                    "targetCityId": "abc",
+                    "targetName": "Enemy",
+                    "targetX": 1,
+                    "targetY": 2,
+                    "troops": [{"type": "soldier", "count": 1}],
+                }
+            ],
+        }
+
+        compact = compact_possible_actions(raw)
+
+        self.assertEqual(100, compact["currentTick"])
+        self.assertEqual([{"buildingType": "bakery", "fromLevel": 1, "toLevel": 2}], compact["upgrades"])
+        self.assertNotIn("cost", compact["upgrades"][0])
+        self.assertEqual([{"troopType": "soldier", "count": 1}], compact["train"])
+        self.assertEqual("abc", compact["attacks"][0]["targetCityId"])
+
+
+if __name__ == "__main__":
+    unittest.main()
