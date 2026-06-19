@@ -6,6 +6,7 @@ import httpx
 from llmmo_harness.client import GameClient
 from llmmo_harness.config import OllamaConfig
 from llmmo_harness.memory import DecisionMemory
+from llmmo_harness.planner.validation import filter_plan_to_possible_actions
 from llmmo_harness.schema import CommandPlan, set_building_types
 from llmmo_harness.state import (
     compact_possible_actions,
@@ -32,7 +33,7 @@ Planning rules (follow strictly):
 2. For upgrade, use a buildingType from possibleActions.upgrades.
 3. For train, use troopType/count exactly as listed in possibleActions.train (always count 1).
 4. For attack, copy targetCityId and troops from one entry in possibleActions.attacks.
-5. Prefer 1–2 commands per plan. If every list is empty, return an empty commands array.
+5. Prefer 1–2 commands per plan. If upgrades, train, and attacks are all empty arrays, return `"commands": []`.
 6. In upgrade reasons, name fromLevel→toLevel from the matching upgrade entry.
 7. Do not repeat the same action as your last two decisions unless still clearly optimal.
 8. Each reason must be specific to this tick (no copy-paste).
@@ -125,4 +126,12 @@ class OllamaPlanner:
             )
         raw = json.loads(_extract_json(content))
         raw["observedAtTick"] = observed_tick
-        return CommandPlan.model_validate(raw)
+        plan = CommandPlan.model_validate(raw)
+        plan, dropped = filter_plan_to_possible_actions(plan, possible)
+        if dropped:
+            print(
+                f"dropped {len(dropped)} command(s) not in possible actions: "
+                + ", ".join(dropped),
+                flush=True,
+            )
+        return plan

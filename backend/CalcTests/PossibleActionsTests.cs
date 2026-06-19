@@ -8,7 +8,7 @@ public class PossibleActionsCalculatorTests
     [Fact]
     public void GetAffordableUpgrades_OnlyListsBuildingsCityCanPayFor()
     {
-        var city = CreateCity(wood: 100, stone: 100, gold: 100, food: 25);
+        var city = CreateCity(wood: 100, stone: 100, gold: 100, food: 0);
         city.Buildings =
         [
             new Building { Type = "bakery", Level = 1 },
@@ -19,6 +19,19 @@ public class PossibleActionsCalculatorTests
 
         Assert.Contains(upgrades, upgrade => upgrade.BuildingType == "bakery" && upgrade.FromLevel == 1 && upgrade.ToLevel == 2);
         Assert.DoesNotContain(upgrades, upgrade => upgrade.BuildingType == "timber_station");
+    }
+
+    [Fact]
+    public void GetAffordableUpgrades_BakeryAffordableAtZeroFood()
+    {
+        var city = CreateCity(wood: 100, stone: 70, gold: 40, food: 0);
+        city.Buildings = [new Building { Type = "bakery", Level = 1 }];
+
+        var upgrades = PossibleActionsCalculator.GetAffordableUpgrades(city, upgradeSlotAvailable: true);
+
+        Assert.Single(upgrades);
+        Assert.Equal("bakery", upgrades[0].BuildingType);
+        Assert.Equal(0, upgrades[0].Cost.Food);
     }
 
     [Fact]

@@ -54,7 +54,7 @@ public static class BuildingRules
             "bakery", "Bakery",
             "Produces food each tick.",
             BuildingEffectKind.Production, BuildingResource.Food,
-            new BuildingUpgradeCost(35, 25, 15, 10)),
+            new BuildingUpgradeCost(50, 35, 20, 0)),
         ["storage_shed"] = new BuildingRule(
             "storage_shed", "Storage Shed",
             "Increases storage capacity for all resources.",

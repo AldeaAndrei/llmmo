@@ -1,7 +1,37 @@
 from llmmo_harness.executor import command_action_dict
-from llmmo_harness.schema import AttackCommand
+from llmmo_harness.planner.validation import filter_plan_to_possible_actions
+from llmmo_harness.schema import AttackCommand, CommandPlan
 from llmmo_harness.state import compact_possible_actions
 import unittest
+
+
+class FilterPlanTests(unittest.TestCase):
+    def test_drops_commands_not_in_possible_actions(self) -> None:
+        plan = CommandPlan.model_validate(
+            {
+                "schemaVersion": 1,
+                "observedAtTick": 100,
+                "commands": [
+                    {
+                        "type": "upgrade",
+                        "buildingType": "barracks",
+                        "reason": "invalid",
+                    },
+                    {
+                        "type": "train",
+                        "troopType": "spy",
+                        "count": 1,
+                        "reason": "invalid",
+                    },
+                ],
+            }
+        )
+        possible = {"upgrades": [], "train": [], "attacks": []}
+
+        filtered, dropped = filter_plan_to_possible_actions(plan, possible)
+
+        self.assertEqual([], filtered.commands)
+        self.assertEqual(2, len(dropped))
 
 
 class ExecutorAttackTests(unittest.TestCase):

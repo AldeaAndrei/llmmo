@@ -56,6 +56,17 @@ public class BuildingRulesTests
     {
         Assert.Equal(expected, BuildingRules.UpgradeDurationTicks(currentLevel));
     }
+
+    [Fact]
+    public void UpgradeCostForLevel_BakeryNeverCostsFood()
+    {
+        var cost = BuildingRules.UpgradeCostForLevel("bakery", targetLevel: 2);
+
+        Assert.Equal(100, cost.Wood);
+        Assert.Equal(70, cost.Stone);
+        Assert.Equal(40, cost.Gold);
+        Assert.Equal(0, cost.Food);
+    }
 }
 
 public class CityBuildingEffectsTests
