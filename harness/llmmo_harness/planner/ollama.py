@@ -6,7 +6,7 @@ import httpx
 from llmmo_harness.client import GameClient
 from llmmo_harness.config import OllamaConfig
 from llmmo_harness.memory import DecisionMemory
-from llmmo_harness.schema import CommandPlan, TrainCommand, UpgradeCommand
+from llmmo_harness.schema import CommandPlan, set_building_types
 from llmmo_harness.state import (
     compact_possible_actions,
     format_recent_decisions,
