@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <Compile Remove="WorldSetup/**" />
+    <Compile Remove="CalcTests/**" />
     <Content Remove="WorldSetup/**" />
     <EmbeddedResource Remove="WorldSetup/**" />
     <None Remove="WorldSetup/**" />

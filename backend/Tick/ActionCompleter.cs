@@ -1,6 +1,7 @@
 using System.Text.Json;
 using llmmo.Api;
 using llmmo.Api.Buildings;
+using llmmo.Api.GameRules;
 using llmmo.Api.Troops;
 using llmmo.Data;
 using llmmo.Entities;
@@ -81,6 +82,7 @@ public class ActionCompleter
         }
 
         building.Level += 1;
+        CityBuildingEffects.Apply(city);
     }
 
     private static void CompleteTrain(City city, JsonElement payload)

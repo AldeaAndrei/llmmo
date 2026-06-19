@@ -1,6 +1,7 @@
 using System.Text.Json;
 using llmmo.Api.Buildings;
 using llmmo.Api.Dtos;
+using llmmo.Api.GameRules;
 using llmmo.Api.Troops;
 using llmmo.Data;
 using llmmo.Entities;
@@ -96,7 +97,11 @@ public class ActionSubmissionService
 
         CityResources.Deduct(city, cost);
 
-        var durationTicks = ActionDurations.GetDurationTicks(normalizedType);
+        var durationTicks = ActionDurations.IsUpgradeSlotType(normalizedType)
+            ? ActionDurations.GetUpgradeDurationTicks(
+                city.Buildings.First(b =>
+                    b.Type.Equals(buildingType, StringComparison.OrdinalIgnoreCase)).Level)
+            : ActionDurations.GetDurationTicks(normalizedType);
         var action = new GameAction
         {
             Id = Guid.NewGuid(),
@@ -162,6 +167,11 @@ public class ActionSubmissionService
         if (building is null)
         {
             return "Building not found in this city.";
+        }
+
+        if (building.Level >= GameBalance.MaxBuildingLevel)
+        {
+            return $"Building is already at max level ({GameBalance.MaxBuildingLevel}).";
         }
 
         cost = BuildingCatalog.UpgradeCostForLevel(building.Type, building.Level + 1);

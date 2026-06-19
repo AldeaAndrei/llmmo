@@ -23,7 +23,6 @@ public record CityFullDto(
     int Gold,
     int Food,
     CityResourcesViewDto Resources,
-    double DefenceFactor,
     double SpyDieChance,
     IReadOnlyList<CityTroopDto> Troops,
     IReadOnlyList<BuildingDto> Buildings,

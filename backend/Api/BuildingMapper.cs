@@ -1,5 +1,6 @@
 using llmmo.Api.Buildings;
 using llmmo.Api.Dtos;
+using llmmo.Api.GameRules;
 using llmmo.Entities;
 
 namespace llmmo.Api;
@@ -8,30 +9,63 @@ public static class BuildingMapper
 {
     public static BuildingDto ToDto(Building building)
     {
-        var def = BuildingCatalog.Get(building.Type);
-        var production = BuildingCatalog.ProductionAtLevel(building.Type, building.Level);
-        var nextCost = BuildingCatalog.UpgradeCostForLevel(building.Type, building.Level + 1);
+        var rule = BuildingRules.Get(building.Type);
+        var production = BuildingRules.ProductionAtLevel(building.Type, building.Level);
+        var nextCost = BuildingRules.UpgradeCostForLevel(building.Type, building.Level + 1);
         var isBarracks = building.Type.Equals("barracks", StringComparison.OrdinalIgnoreCase);
         BuildingUpgradeCostDto? trainCostPerTroop = null;
         int? trainCapacity = null;
 
         if (isBarracks)
         {
-            var perTroop = BuildingCatalog.TrainCostPerTroop;
+            var perTroop = TroopRules.Get("soldier").TrainCostPerUnit;
             trainCostPerTroop = new BuildingUpgradeCostDto(
                 perTroop.Wood, perTroop.Stone, perTroop.Gold, perTroop.Food);
-            trainCapacity = BuildingCatalog.TrainCapacityAtLevel(building.Level);
+            trainCapacity = BuildingRules.TrainCapacityAtLevel(building.Level);
         }
+
+        int? upgradeDuration = building.Level < GameBalance.MaxBuildingLevel
+            ? BuildingRules.UpgradeDurationTicks(building.Level)
+            : null;
 
         return new BuildingDto(
             building.Type,
-            def.Name,
+            rule.Name,
             building.Level,
-            def.ProducesResources ? production : null,
-            def.ProducesResources ? def.Resource!.Value.ToString().ToLowerInvariant() : null,
+            rule.Description,
+            BuildingRules.FormatCurrentEffect(building.Type, building.Level),
+            BuildingRules.FormatNextLevelEffect(building.Type, building.Level),
+            upgradeDuration,
+            rule.EffectKind == BuildingEffectKind.Production ? production : null,
+            rule.EffectKind == BuildingEffectKind.Production
+                ? rule.Resource!.Value.ToString().ToLowerInvariant()
+                : null,
             isBarracks,
-            new BuildingUpgradeCostDto(nextCost.Wood, nextCost.Stone, nextCost.Gold, nextCost.Food),
+            building.Level < GameBalance.MaxBuildingLevel
+                ? new BuildingUpgradeCostDto(nextCost.Wood, nextCost.Stone, nextCost.Gold, nextCost.Food)
+                : null,
             trainCostPerTroop,
             trainCapacity);
+    }
+
+    public static BuildingCatalogDto ToCatalogDto(string type)
+    {
+        var rule = BuildingRules.Get(type);
+        return new BuildingCatalogDto(
+            rule.Type,
+            rule.Name,
+            rule.Description,
+            rule.EffectKind.ToString(),
+            BuildingRules.EffectFormulaText(type),
+            GameBalance.MaxBuildingLevel,
+            new BuildingUpgradeCostDto(
+                rule.BaseUpgradeCost.Wood,
+                rule.BaseUpgradeCost.Stone,
+                rule.BaseUpgradeCost.Gold,
+                rule.BaseUpgradeCost.Food),
+            rule.EffectKind == BuildingEffectKind.Production ? GameBalance.ProductionPerLevel : null,
+            rule.EffectKind == BuildingEffectKind.Production
+                ? rule.Resource!.Value.ToString().ToLowerInvariant()
+                : null);
     }
 }

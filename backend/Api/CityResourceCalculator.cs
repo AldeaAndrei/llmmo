@@ -1,5 +1,6 @@
 using llmmo.Api.Buildings;
 using llmmo.Api.Dtos;
+using llmmo.Api.GameRules;
 using llmmo.Api.Troops;
 using llmmo.Entities;
 
@@ -9,7 +10,7 @@ public record ResourceProduction(int Gold, int Stone, int Wood, int Food);
 
 public static class CityResourceCalculator
 {
-    public const int DefaultMaxResource = 1000;
+    public const int DefaultMaxResource = GameBalance.BaseMaxResource;
 
     public static ResourceProduction CalculateProduction(City city)
     {

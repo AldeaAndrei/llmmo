@@ -115,5 +115,4 @@ public record CityVisibilityDto(
     string Visibility,
     CityResourcesDto? Resources,
     IReadOnlyList<TroopStackEntryDto>? Troops,
-    double DefenceFactor,
     double SpyDieChance);

@@ -30,8 +30,6 @@ public class City
 
     public int MaxFood { get; set; }
 
-    public double DefenceFactor { get; set; }
-
     public double SpyDieChance { get; set; }
 
     public DateTime CreatedAt { get; set; }

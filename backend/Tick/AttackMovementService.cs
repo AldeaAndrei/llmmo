@@ -1,4 +1,5 @@
 using llmmo.Api;
+using llmmo.Api.Buildings;
 using llmmo.Api.Troops;
 using llmmo.Data;
 using llmmo.Entities;
@@ -123,6 +124,7 @@ public class AttackMovementService
 
         var defenderCity = await _db.Cities
             .Include(c => c.Troops)
+            .Include(c => c.Buildings)
             .FirstOrDefaultAsync(c => c.Id == attack.TargetCityId.Value, cancellationToken);
 
         if (defenderCity is null)
@@ -183,6 +185,7 @@ public class AttackMovementService
         sourceCity.Stone += attack.LootStone;
         sourceCity.Gold += attack.LootGold;
         sourceCity.Food += attack.LootFood;
+        CityResources.ClampToMax(sourceCity);
 
         var survivors = TroopStackHelper.Parse(attack.Survivors ?? "[]");
         foreach (var entry in survivors)

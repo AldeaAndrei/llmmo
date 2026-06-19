@@ -97,6 +97,8 @@ export const api = {
 
   getTroopCatalog: () => request('/catalog/troops'),
 
+  getBuildingCatalog: () => request('/catalog/buildings'),
+
   getAttacks: (cityId) =>
     request(cityId ? `/attacks?city_id=${cityId}` : '/attacks'),
 

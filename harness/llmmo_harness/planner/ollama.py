@@ -5,7 +5,7 @@ import httpx
 
 from llmmo_harness.client import GameClient
 from llmmo_harness.config import OllamaConfig
-from llmmo_harness.schema import BUILDING_TYPES, CommandPlan, TROOP_TYPES
+from llmmo_harness.schema import BUILDING_TYPES, CommandPlan, TROOP_TYPES, set_building_types
 from llmmo_harness.state import compact_planner_state, resolve_first_city
 
 SYSTEM_PROMPT = """You are a game agent planner for LLMMO.
@@ -44,6 +44,8 @@ class OllamaPlanner:
         world = client.get_world()
         city = resolve_first_city(client)
         troops = client.get_troop_catalog()
+        buildings = client.get_building_catalog()
+        set_building_types(entry["type"] for entry in buildings)
 
         observed_tick = int(world.get("currentTick", 0))
         state = compact_planner_state(world, city, troops)

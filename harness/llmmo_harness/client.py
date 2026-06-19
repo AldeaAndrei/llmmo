@@ -49,6 +49,12 @@ class GameClient:
             raise GameApiError(response.status_code, response.text)
         return response.json()
 
+    def get_building_catalog(self) -> list[dict]:
+        response = self._request("GET", "/catalog/buildings")
+        if response.status_code != 200:
+            raise GameApiError(response.status_code, response.text)
+        return response.json()
+
     def create_action(self, city_id: str, action_type: str, payload: dict) -> dict:
         body = {
             "cityId": city_id,
