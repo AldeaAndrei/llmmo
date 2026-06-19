@@ -5,6 +5,8 @@ namespace llmmo.Api;
 
 public static class ActionPayloadHelper
 {
+    public const int MaxReasonLength = 500;
+
     public static JsonElement ToJsonElement(object payload)
     {
         if (payload is JsonElement element)
@@ -115,6 +117,38 @@ public static class ActionPayloadHelper
             GetInt(deducted, "stone"),
             GetInt(deducted, "gold"),
             GetInt(deducted, "food"));
+    }
+
+    public static string? GetReason(JsonElement payload)
+    {
+        if (payload.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        if (!payload.TryGetProperty("reason", out var property)
+            || property.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var reason = property.GetString()?.Trim();
+        return string.IsNullOrEmpty(reason) ? null : reason;
+    }
+
+    public static string? ValidateReason(string? reason)
+    {
+        if (reason is null)
+        {
+            return null;
+        }
+
+        if (reason.Length > MaxReasonLength)
+        {
+            return $"Reason must be at most {MaxReasonLength} characters.";
+        }
+
+        return null;
     }
 
     public static string SerializePayload(object payloadFields)

@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { api } from '@/lib/api'
+import { useWorld } from '@/context/WorldContext'
 
 export function useLlmActions({ includeDone = false, limit = 50 } = {}) {
+  const { currentTick } = useWorld()
+  const prevTickRef = useRef(currentTick)
   const [actions, setActions] = useState([])
   const [initialLoading, setInitialLoading] = useState(true)
   const [hasLoaded, setHasLoaded] = useState(false)
@@ -26,23 +29,17 @@ export function useLlmActions({ includeDone = false, limit = 50 } = {}) {
   }, [includeDone, limit])
 
   useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      const data = await refresh()
-      if (cancelled && data) {
-        return
-      }
-    }
-
-    load()
-    const pollId = setInterval(refresh, 3000)
-
-    return () => {
-      cancelled = true
-      clearInterval(pollId)
-    }
+    refresh()
   }, [refresh])
+
+  useEffect(() => {
+    if (prevTickRef.current === currentTick) {
+      return
+    }
+
+    prevTickRef.current = currentTick
+    refresh()
+  }, [currentTick, refresh])
 
   return { actions, loading: initialLoading, hasLoaded, refresh }
 }

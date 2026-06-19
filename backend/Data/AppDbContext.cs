@@ -180,10 +180,6 @@ public class AppDbContext : DbContext
                 .HasColumnName("max_food")
                 .HasDefaultValue(1000)
                 .IsRequired();
-            entity.Property(city => city.DefenceFactor)
-                .HasColumnName("defence_factor")
-                .HasDefaultValue(1.0)
-                .IsRequired();
             entity.Property(city => city.SpyDieChance)
                 .HasColumnName("spy_die_chance")
                 .HasDefaultValue(0.5)

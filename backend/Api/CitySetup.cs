@@ -36,7 +36,5 @@ public static class CitySetup
         MaxStone = CityResourceCalculator.DefaultMaxResource,
         MaxGold = CityResourceCalculator.DefaultMaxResource,
         MaxFood = CityResourceCalculator.DefaultMaxResource,
-        DefenceFactor = 1.0,
-        SpyDieChance = 0.5,
     };
 }

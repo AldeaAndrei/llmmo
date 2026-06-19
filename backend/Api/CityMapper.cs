@@ -27,7 +27,6 @@ public static class CityMapper
             city.Gold,
             city.Food,
             CityResourceCalculator.BuildResourcesView(city),
-            city.DefenceFactor,
             city.SpyDieChance,
             troopDtos,
             buildingDtos,
@@ -48,7 +47,6 @@ public static class CityMapper
         visibility,
         resources,
         troops,
-        city.DefenceFactor,
         city.SpyDieChance);
 
     public static CityMapDto ToMapDto(City city) => new(

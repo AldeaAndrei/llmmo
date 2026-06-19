@@ -6,8 +6,22 @@ import { WorldProvider } from '@/context/WorldContext'
 import AuthGate from '@/components/auth/AuthGate'
 import GameBootstrap from '@/components/GameBootstrap'
 import AppShell from '@/components/layout/AppShell'
+import AgentsDashboard from '@/components/llm/AgentsDashboard'
+
+function isAgentsDashboard() {
+  const path = window.location.pathname
+  return path === '/agents' || path.endsWith('/agents')
+}
 
 function App() {
+  if (isAgentsDashboard()) {
+    return (
+      <WorldProvider>
+        <AgentsDashboard />
+      </WorldProvider>
+    )
+  }
+
   return (
     <AuthProvider>
       <WorldProvider>

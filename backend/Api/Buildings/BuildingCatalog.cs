@@ -1,3 +1,6 @@
+using llmmo.Api.GameRules;
+using llmmo.Api.Troops;
+
 namespace llmmo.Api.Buildings;
 
 public enum BuildingResource
@@ -20,83 +23,37 @@ public record BuildingDefinition(
 
 public static class BuildingCatalog
 {
-    public static readonly string[] AllTypes =
-    [
-        "gold_mine",
-        "stone_mine",
-        "timber_station",
-        "bakery",
-        "storage_shed",
-        "barracks",
-        "spy_academy",
-        "wall",
-    ];
+    public static string[] AllTypes => BuildingRules.AllTypes;
 
-    private static readonly Dictionary<string, BuildingDefinition> ByType = new(StringComparer.OrdinalIgnoreCase)
+    public static bool IsValidType(string type) => BuildingRules.IsValidType(type);
+
+    public static BuildingDefinition Get(string type)
     {
-        ["gold_mine"] = new BuildingDefinition(
-            "gold_mine", "Gold Mine", true, BuildingResource.Gold, 3,
-            new BuildingUpgradeCost(50, 30, 0, 20)),
-        ["stone_mine"] = new BuildingDefinition(
-            "stone_mine", "Stone Mine", true, BuildingResource.Stone, 3,
-            new BuildingUpgradeCost(40, 20, 10, 15)),
-        ["timber_station"] = new BuildingDefinition(
-            "timber_station", "Timber Station", true, BuildingResource.Wood, 3,
-            new BuildingUpgradeCost(30, 20, 10, 15)),
-        ["bakery"] = new BuildingDefinition(
-            "bakery", "Bakery", true, BuildingResource.Food, 3,
-            new BuildingUpgradeCost(35, 25, 15, 10)),
-        ["storage_shed"] = new BuildingDefinition(
-            "storage_shed", "Storage Shed", false, null, 0,
-            new BuildingUpgradeCost(40, 35, 20, 15)),
-        ["barracks"] = new BuildingDefinition(
-            "barracks", "Barracks", false, null, 0,
-            new BuildingUpgradeCost(60, 40, 25, 30)),
-        ["spy_academy"] = new BuildingDefinition(
-            "spy_academy", "Spy Academy", false, null, 0,
-            new BuildingUpgradeCost(50, 35, 30, 20)),
-        ["wall"] = new BuildingDefinition(
-            "wall", "Wall", false, null, 0,
-            new BuildingUpgradeCost(45, 50, 15, 10)),
-    };
-
-    public static bool IsValidType(string type) => ByType.ContainsKey(type);
-
-    public static BuildingDefinition Get(string type) => ByType[type];
-
-    public static int ProductionAtLevel(string type, int level)
-    {
-        var def = Get(type);
-        if (!def.ProducesResources || level <= 0)
-        {
-            return 0;
-        }
-
-        return def.BaseProductionPerLevel * level;
+        var rule = BuildingRules.Get(type);
+        return new BuildingDefinition(
+            rule.Type,
+            rule.Name,
+            rule.EffectKind == BuildingEffectKind.Production,
+            rule.Resource,
+            rule.EffectKind == BuildingEffectKind.Production ? GameBalance.ProductionPerLevel : 0,
+            rule.BaseUpgradeCost);
     }
 
-    public static BuildingUpgradeCost UpgradeCostForLevel(string type, int targetLevel)
-    {
-        var def = Get(type);
-        var multiplier = Math.Max(1, targetLevel);
+    public static int ProductionAtLevel(string type, int level) =>
+        BuildingRules.ProductionAtLevel(type, level);
 
-        return new BuildingUpgradeCost(
-            def.BaseUpgradeCost.Wood * multiplier,
-            def.BaseUpgradeCost.Stone * multiplier,
-            def.BaseUpgradeCost.Gold * multiplier,
-            def.BaseUpgradeCost.Food * multiplier);
-    }
+    public static BuildingUpgradeCost UpgradeCostForLevel(string type, int targetLevel) =>
+        BuildingRules.UpgradeCostForLevel(type, targetLevel);
 
-    public static BuildingUpgradeCost TrainCostPerTroop { get; } = new(0, 0, 1, 1);
+    public static BuildingUpgradeCost TrainCostPerTroop =>
+        TroopRules.Get("soldier").TrainCostPerUnit;
 
-    public static int TrainCapacityAtLevel(int barracksLevel) => barracksLevel * 4;
+    public static int TrainCapacityAtLevel(int barracksLevel) =>
+        BuildingRules.TrainCapacityAtLevel(barracksLevel);
 
-    public static BuildingUpgradeCost TrainCostForCount(int count)
-    {
-        return new BuildingUpgradeCost(
-            TrainCostPerTroop.Wood * count,
-            TrainCostPerTroop.Stone * count,
-            TrainCostPerTroop.Gold * count,
-            TrainCostPerTroop.Food * count);
-    }
+    public static BuildingUpgradeCost TrainCostForCount(int count) =>
+        TroopRules.TrainCostForCount("soldier", count);
+
+    public static int UpgradeDurationTicks(int currentLevel) =>
+        BuildingRules.UpgradeDurationTicks(currentLevel);
 }

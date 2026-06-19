@@ -49,7 +49,13 @@ function formatResource(label, resource) {
     return `${label} —`
   }
 
-  return `${label} ${resource.amount}/${resource.max} ${formatTickDelta(resource.tickDelta)}`
+  let line = `${label} ${resource.amount}/${resource.max} ${formatTickDelta(resource.tickDelta)}`
+
+  if (resource.upkeep > 0) {
+    line += ` (−${resource.upkeep} upkeep)`
+  }
+
+  return line
 }
 
 function StatusBar() {

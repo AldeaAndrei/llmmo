@@ -89,20 +89,35 @@ function BuildingDetail({ selection }) {
     )
   }
 
-  const production =
-    building.productionPerTick && building.productionResource
-      ? `+${building.productionPerTick} ${building.productionResource} per tick`
-      : null
-
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold">{building.name}</h2>
         <p className="text-sm text-muted-foreground">Level {building.level}</p>
+        {building.description && (
+          <p className="mt-1 text-sm text-muted-foreground">{building.description}</p>
+        )}
       </div>
 
-      {production && (
-        <p className="text-sm">Production: {production}</p>
+      {building.currentEffect && (
+        <p className="text-sm">
+          <span className="text-muted-foreground">Current effect: </span>
+          {building.currentEffect}
+        </p>
+      )}
+
+      {building.nextLevelEffect && (
+        <p className="text-sm">
+          <span className="text-muted-foreground">Next level: </span>
+          {building.nextLevelEffect}
+        </p>
+      )}
+
+      {building.upgradeDurationTicks != null && (
+        <p className="text-sm text-muted-foreground">
+          Upgrade time: {building.upgradeDurationTicks} tick
+          {building.upgradeDurationTicks === 1 ? '' : 's'}
+        </p>
       )}
 
       {building.nextUpgradeCost && (
@@ -112,12 +127,6 @@ function BuildingDetail({ selection }) {
             cost={building.nextUpgradeCost}
             available={primaryCity}
           />
-        </p>
-      )}
-
-      {building.canTrainTroops && (
-        <p className="text-sm text-muted-foreground">
-          Train troops at barracks (max {building.trainCapacity} per action)
         </p>
       )}
 

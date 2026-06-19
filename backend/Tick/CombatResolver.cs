@@ -1,16 +1,12 @@
 using System.Text.Json;
+using llmmo.Api.GameRules;
 using llmmo.Api.Troops;
-using llmmo.Data;
 using llmmo.Entities;
-using Microsoft.EntityFrameworkCore;
 
 namespace llmmo.Tick;
 
 public class CombatResolver
 {
-    private const double WinnerLossFactor = 0.5;
-    private const double LoserWipeFactor = 0.9;
-
     public CombatResult Resolve(
         IReadOnlyList<TroopStackEntry> attackers,
         City defenderCity)
@@ -18,7 +14,10 @@ public class CombatResolver
         var attackerPower = attackers.Sum(entry => TroopCatalog.CombatPower(entry.Type, entry.Count));
         var defenderPowerRaw = defenderCity.Troops.Sum(entry =>
             TroopCatalog.CombatPower(entry.Type, entry.Quantity));
-        var defenderPower = (int)Math.Floor(defenderPowerRaw * defenderCity.DefenceFactor);
+        var wallLevel = defenderCity.Buildings
+            .FirstOrDefault(b => b.Type.Equals("wall", StringComparison.OrdinalIgnoreCase))
+            ?.Level ?? 0;
+        var defenderPower = defenderPowerRaw + BuildingRules.WallDefenceBonusAtLevel(wallLevel);
 
         var attackerWins = attackerPower > defenderPower;
 
@@ -123,13 +122,13 @@ public class CombatResolver
         }
 
         var total = TroopStackHelper.TotalCount(troops);
-        return (int)Math.Floor(loserPower / (double)winnerPower * total * WinnerLossFactor);
+        return (int)Math.Floor(loserPower / (double)winnerPower * total * CombatRules.WinnerLossFactor);
     }
 
     private static int ComputeLoserLoss(IReadOnlyList<TroopStackEntry> troops)
     {
         var total = TroopStackHelper.TotalCount(troops);
-        return (int)Math.Floor(total * LoserWipeFactor);
+        return (int)Math.Floor(total * CombatRules.LoserWipeFactor);
     }
 
     private static List<TroopStackEntry> ApplyLosses(

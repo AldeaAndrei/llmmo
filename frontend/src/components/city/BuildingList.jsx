@@ -15,13 +15,16 @@ const BUILDING_ORDER = [
   'wall',
 ]
 
-function formatProduction(building) {
-  if (!building.productionPerTick || !building.productionResource) {
-    return null
+function formatBuildingEffect(building) {
+  if (building.currentEffect) {
+    return building.currentEffect
   }
 
-  const resource = building.productionResource
-  return `+${building.productionPerTick} ${resource}/tick`
+  if (building.productionPerTick && building.productionResource) {
+    return `+${building.productionPerTick} ${building.productionResource}/tick`
+  }
+
+  return null
 }
 
 function BuildingListItem({ building, isSelected, onSelect, production }) {
@@ -118,7 +121,7 @@ function BuildingList() {
               selection?.type === 'building' && selection.id === building.type
             }
             onSelect={handleSelect}
-            production={formatProduction(building)}
+            production={formatBuildingEffect(building)}
           />
         ))}
       </ul>

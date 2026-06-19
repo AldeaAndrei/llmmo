@@ -54,7 +54,7 @@ public static class WorldSeeder
 
             db.Players.Add(player);
             db.Cities.Add(city);
-            CityBootstrap.AddDefaults(db, cityId, soldierCount: 0);
+            CityBootstrap.AddDefaults(city, db, soldierCount: 0);
 
             Console.WriteLine(
                 $"  {playerName,-16} llm    city @ ({x,2},{y,2})  troops=0  W=0 S=0 G=0 F=0");
@@ -93,7 +93,7 @@ public static class WorldSeeder
         db.Users.Add(adminUser);
         db.Players.Add(adminPlayer);
         db.Cities.Add(adminCity);
-        CityBootstrap.AddDefaults(db, adminCityId, soldierCount: CitySetup.StarterSoldiers);
+        CityBootstrap.AddDefaults(adminCity, db, soldierCount: CitySetup.StarterSoldiers);
 
         Console.WriteLine(
             $"  {AdminEmail} / {AdminPlayerName} @ ({adminTile.X,2},{adminTile.Y,2})  " +
@@ -156,8 +156,6 @@ public static class WorldSeeder
         MaxStone = CityResourceCalculator.DefaultMaxResource,
         MaxGold = CityResourceCalculator.DefaultMaxResource,
         MaxFood = CityResourceCalculator.DefaultMaxResource,
-        DefenceFactor = 1.0,
-        SpyDieChance = 0.5,
     };
 
     private static string BuildPlayerName(Random random, int index)

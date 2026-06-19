@@ -1,6 +1,7 @@
 using System.Text.Json;
 using llmmo.Api.Buildings;
 using llmmo.Api.Dtos;
+using llmmo.Api.GameRules;
 using llmmo.Api.Troops;
 using llmmo.Data;
 using llmmo.Entities;
@@ -74,7 +75,7 @@ public class ActionSubmissionService
 
         if (ActionDurations.IsUpgradeSlotType(normalizedType))
         {
-            var upgradeResult = ValidateUpgrade(city, buildingType, out cost, out payloadJson);
+            var upgradeResult = ValidateUpgrade(city, buildingType, payloadElement, out cost, out payloadJson);
             if (upgradeResult is not null)
             {
                 return (null, upgradeResult);
@@ -96,7 +97,11 @@ public class ActionSubmissionService
 
         CityResources.Deduct(city, cost);
 
-        var durationTicks = ActionDurations.GetDurationTicks(normalizedType);
+        var durationTicks = ActionDurations.IsUpgradeSlotType(normalizedType)
+            ? ActionDurations.GetUpgradeDurationTicks(
+                city.Buildings.First(b =>
+                    b.Type.Equals(buildingType, StringComparison.OrdinalIgnoreCase)).Level)
+            : ActionDurations.GetDurationTicks(normalizedType);
         var action = new GameAction
         {
             Id = Guid.NewGuid(),
@@ -145,11 +150,19 @@ public class ActionSubmissionService
     private static string? ValidateUpgrade(
         City city,
         string? buildingType,
+        JsonElement payloadElement,
         out BuildingUpgradeCost cost,
         out string payloadJson)
     {
         cost = new BuildingUpgradeCost(0, 0, 0, 0);
         payloadJson = "{}";
+
+        var reason = ActionPayloadHelper.GetReason(payloadElement);
+        var reasonError = ActionPayloadHelper.ValidateReason(reason);
+        if (reasonError is not null)
+        {
+            return reasonError;
+        }
 
         if (string.IsNullOrWhiteSpace(buildingType) || !BuildingCatalog.IsValidType(buildingType))
         {
@@ -164,10 +177,16 @@ public class ActionSubmissionService
             return "Building not found in this city.";
         }
 
+        if (building.Level >= GameBalance.MaxBuildingLevel)
+        {
+            return $"Building is already at max level ({GameBalance.MaxBuildingLevel}).";
+        }
+
         cost = BuildingCatalog.UpgradeCostForLevel(building.Type, building.Level + 1);
         payloadJson = ActionPayloadHelper.SerializePayload(new
         {
             buildingType = building.Type,
+            reason,
             deducted = new { cost.Wood, cost.Stone, cost.Gold, cost.Food },
         });
 
@@ -183,6 +202,13 @@ public class ActionSubmissionService
     {
         cost = new BuildingUpgradeCost(0, 0, 0, 0);
         payloadJson = "{}";
+
+        var reason = ActionPayloadHelper.GetReason(payloadElement);
+        var reasonError = ActionPayloadHelper.ValidateReason(reason);
+        if (reasonError is not null)
+        {
+            return reasonError;
+        }
 
         if (!string.Equals(buildingType, "barracks", StringComparison.OrdinalIgnoreCase))
         {
@@ -226,6 +252,7 @@ public class ActionSubmissionService
             buildingType = "barracks",
             troopType,
             count,
+            reason,
             deducted = new { cost.Wood, cost.Stone, cost.Gold, cost.Food },
         });
 

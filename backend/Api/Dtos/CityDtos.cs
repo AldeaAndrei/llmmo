@@ -3,7 +3,8 @@ namespace llmmo.Api.Dtos;
 public record CityResourceViewDto(
     int Amount,
     int Max,
-    int TickDelta);
+    int TickDelta,
+    int? Upkeep = null);
 
 public record CityResourcesViewDto(
     CityResourceViewDto Gold,
@@ -22,7 +23,6 @@ public record CityFullDto(
     int Gold,
     int Food,
     CityResourcesViewDto Resources,
-    double DefenceFactor,
     double SpyDieChance,
     IReadOnlyList<CityTroopDto> Troops,
     IReadOnlyList<BuildingDto> Buildings,

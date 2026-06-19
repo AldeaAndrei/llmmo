@@ -2,7 +2,7 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field, field_validator
 
-BUILDING_TYPES = frozenset(
+DEFAULT_BUILDING_TYPES = frozenset(
     {
         "gold_mine",
         "stone_mine",
@@ -15,14 +15,22 @@ BUILDING_TYPES = frozenset(
     }
 )
 
+BUILDING_TYPES = DEFAULT_BUILDING_TYPES
+
 TROOP_TYPES = frozenset({"soldier", "spy"})
 
 COMMAND_TYPES = frozenset({"upgrade", "train"})
 
 
+def set_building_types(types: set[str] | frozenset[str]) -> None:
+    global BUILDING_TYPES
+    BUILDING_TYPES = frozenset(types)
+
+
 class UpgradeCommand(BaseModel):
     type: Literal["upgrade"] = "upgrade"
     buildingType: str
+    reason: str = Field(min_length=1, max_length=500)
 
     @field_validator("buildingType")
     @classmethod
@@ -36,6 +44,7 @@ class TrainCommand(BaseModel):
     type: Literal["train"] = "train"
     troopType: str
     count: int = 1
+    reason: str = Field(min_length=1, max_length=500)
 
     @field_validator("troopType")
     @classmethod
