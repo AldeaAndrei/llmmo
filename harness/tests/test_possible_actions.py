@@ -1,7 +1,7 @@
 from llmmo_harness.executor import command_action_dict
 from llmmo_harness.planner.validation import filter_plan_to_possible_actions
 from llmmo_harness.schema import AttackCommand, CommandPlan, TrainCommand
-from llmmo_harness.state import compact_possible_actions
+from llmmo_harness.state import build_planner_hints, compact_possible_actions
 import unittest
 
 
@@ -119,6 +119,39 @@ class CompactPossibleActionsTests(unittest.TestCase):
         self.assertEqual("abc", compact["targets"][0]["targetCityId"])
         self.assertTrue(compact["diplomacy"]["canSendMessage"])
         self.assertFalse(compact["diplomacy"]["canDeclareDiplomacy"])
+
+
+class PlannerHintsTests(unittest.TestCase):
+    def test_hints_push_scout_when_hoarding_spies(self) -> None:
+        possible = {
+            "troops": [{"type": "soldier", "count": 1}, {"type": "spy", "count": 7}],
+            "targets": [
+                {
+                    "targetCityId": "abc",
+                    "targetName": "BrightCrown",
+                    "travelTicks": 34,
+                    "canScout": True,
+                }
+            ],
+        }
+        recent = [
+            {"tick": 1, "action": {"type": "train", "troopType": "spy"}, "reason": "x"},
+            {"tick": 2, "action": {"type": "upgrade", "buildingType": "wall"}, "reason": "y"},
+        ]
+
+        hints = build_planner_hints(possible, recent)
+
+        self.assertTrue(any("Scouting is NOT training" in hint for hint in hints))
+        self.assertTrue(any("BrightCrown" in hint for hint in hints))
+        self.assertTrue(any("7 spy" in hint for hint in hints))
+
+    def test_hints_empty_without_scout_targets(self) -> None:
+        possible = {
+            "troops": [{"type": "spy", "count": 5}],
+            "targets": [{"targetCityId": "abc", "canScout": False}],
+        }
+
+        self.assertEqual([], build_planner_hints(possible, []))
 
 
 if __name__ == "__main__":

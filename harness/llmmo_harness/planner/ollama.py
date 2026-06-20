@@ -9,6 +9,7 @@ from llmmo_harness.memory import DecisionMemory
 from llmmo_harness.planner.validation import filter_plan_to_possible_actions
 from llmmo_harness.schema import CommandPlan, set_building_types
 from llmmo_harness.state import (
+    build_planner_hints,
     compact_possible_actions,
     format_recent_decisions,
     resolve_first_city_id,
@@ -38,13 +39,16 @@ Planning rules (follow strictly):
 2. For upgrade, use a buildingType from upgrades.
 3. For train, use troopType/count exactly as listed in train (always count 1).
 4. For attack, use targetCityId from targets where canAttack is true (soldier) or canScout is true (spy).
-5. Diplomacy commands use toPlayerId from diplomacy.players.
-6. Only send a message when diplomacy.canSendMessage is true.
-7. Only declare ally/enemy/clear_relation when diplomacy.canDeclareDiplomacy is true.
-8. Prefer 1–2 commands per plan. If no valid actions exist, return `"commands": []`.
-9. In upgrade reasons, name fromLevel→toLevel from the matching upgrade entry.
-10. Do not repeat the same action as your last two decisions unless still clearly optimal.
-11. Each reason must be specific to this tick (no copy-paste).
+5. Training a spy does NOT scout. Scouting requires attack with troopType spy to a target where canScout is true.
+6. Diplomacy commands use toPlayerId from diplomacy.players.
+7. Only send a message when diplomacy.canSendMessage is true.
+8. Only declare ally/enemy/clear_relation when diplomacy.canDeclareDiplomacy is true.
+9. Prefer 1–2 commands per plan. If no valid actions exist, return `"commands": []`.
+10. In upgrade reasons, name fromLevel→toLevel from the matching upgrade entry.
+11. Do not repeat the same action as your last two decisions unless still clearly optimal.
+12. Each reason must be specific to this tick (no copy-paste).
+13. If you have 2+ spies, scout a nearby city (attack + spy) before training another spy.
+14. If diplomacy.latestUnreadMessage is present, consider replying with a message command when canSendMessage is true.
 """
 
 
@@ -103,6 +107,9 @@ class OllamaPlanner:
                 "Your last two executed decisions (avoid repeating unless still optimal):\n"
                 f"{json.dumps(recent, separators=(',', ':'))}"
             )
+        hints = build_planner_hints(possible, recent)
+        if hints:
+            user_parts.append("Strategic hints:\n" + "\n".join(f"- {hint}" for hint in hints))
         user_parts.append(
             f"Set observedAtTick to {observed_tick}. "
             "Return a plan with 0–2 commands taken only from Possible actions."

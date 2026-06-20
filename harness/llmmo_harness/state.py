@@ -12,6 +12,69 @@ def format_recent_decisions(records: list) -> list[dict]:
     ]
 
 
+def _spy_count(possible: dict) -> int:
+    for troop in possible.get("troops") or []:
+        if troop.get("type") == "spy":
+            return int(troop.get("count", 0))
+    return 0
+
+
+def _recent_train_spy_count(recent: list[dict]) -> int:
+    count = 0
+    for entry in recent:
+        action = entry.get("action") or {}
+        if action.get("type") == "train" and action.get("troopType") == "spy":
+            count += 1
+    return count
+
+
+def _recent_scout_count(recent: list[dict]) -> int:
+    count = 0
+    for entry in recent:
+        action = entry.get("action") or {}
+        if action.get("type") == "attack" and action.get("troopType") == "spy":
+            count += 1
+    return count
+
+
+def build_planner_hints(possible: dict, recent: list[dict]) -> list[str]:
+    """Short tactical hints derived from game state (not available to the model otherwise)."""
+    hints: list[str] = []
+    spy_count = _spy_count(possible)
+    scout_targets = [target for target in possible.get("targets") or [] if target.get("canScout")]
+
+    if not scout_targets:
+        return hints
+
+    nearest = min(scout_targets, key=lambda target: target.get("travelTicks", 999))
+    target_line = (
+        f"{nearest['targetName']} (targetCityId={nearest['targetCityId']}, "
+        f"travelTicks={nearest['travelTicks']})"
+    )
+
+    hints.append(
+        "Scouting is NOT training. To scout, use "
+        '{"type":"attack","targetCityId":"<uuid>","troopType":"spy","count":1} '
+        "on a target where canScout is true. The spy returns with intel."
+    )
+
+    if spy_count >= 1:
+        hints.append(f"You currently have {spy_count} spy/spies available to send.")
+
+    recent_train_spy = _recent_train_spy_count(recent)
+    recent_scouts = _recent_scout_count(recent)
+
+    if spy_count >= 2 or (spy_count >= 1 and recent_train_spy >= 1 and recent_scouts == 0):
+        hints.append(
+            f"Priority this plan: scout {target_line} instead of training another spy."
+        )
+
+    if recent_train_spy >= 2 and recent_scouts == 0:
+        hints.append("Do not choose train spy again until you have scouted at least one city.")
+
+    return hints
+
+
 def compact_possible_actions(actions: dict) -> dict:
     """Trim possible-actions payload for the LLM prompt."""
     diplomacy = actions.get("diplomacy") or {}
