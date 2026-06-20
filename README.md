@@ -101,6 +101,7 @@ python -m llmmo_harness.cli execute -c config.yaml
 From repo root you can also run `npm run harness:plan` and `npm run harness:execute`.
 
 - Quick usage: [harness/README.md](harness/README.md)
+- **Local setup guide:** [harness/localsetup.md](harness/localsetup.md)
 - Ollama setup: [harness/setup.md](harness/setup.md)
 
 ---

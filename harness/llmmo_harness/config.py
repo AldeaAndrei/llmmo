@@ -30,8 +30,8 @@ class PlannerConfig:
 
 @dataclass
 class ScheduleConfig:
-    plan_interval_seconds: int = 120
-    execute_interval_seconds: int = 10
+    plan_interval_seconds: int = 900
+    execute_interval_seconds: int = 30
     max_commands_per_execute: int = 1
 
 
@@ -100,10 +100,10 @@ def load_config(path: Path) -> HarnessConfig:
         ),
         schedule=ScheduleConfig(
             plan_interval_seconds=int(
-                schedule_raw.get("plan_interval_seconds", 120)
+                schedule_raw.get("plan_interval_seconds", 900)
             ),
             execute_interval_seconds=int(
-                schedule_raw.get("execute_interval_seconds", 10)
+                schedule_raw.get("execute_interval_seconds", 30)
             ),
             max_commands_per_execute=int(
                 schedule_raw.get("max_commands_per_execute", 1)

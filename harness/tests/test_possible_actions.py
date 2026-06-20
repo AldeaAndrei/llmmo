@@ -1,6 +1,6 @@
 from llmmo_harness.executor import command_action_dict
 from llmmo_harness.planner.validation import filter_plan_to_possible_actions
-from llmmo_harness.schema import AttackCommand, CommandPlan
+from llmmo_harness.schema import AttackCommand, CommandPlan, TrainCommand
 from llmmo_harness.state import compact_possible_actions
 import unittest
 
@@ -34,7 +34,19 @@ class FilterPlanTests(unittest.TestCase):
         self.assertEqual(2, len(dropped))
 
 
-class ExecutorAttackTests(unittest.TestCase):
+class CommandActionDictTests(unittest.TestCase):
+    def test_command_action_dict_includes_train_fields(self) -> None:
+        command = TrainCommand(
+            type="train",
+            troopType="spy",
+            count=1,
+            reason="Scout nearby cities",
+        )
+        action = command_action_dict(command)
+        self.assertEqual("train", action["type"])
+        self.assertEqual("spy", action["troopType"])
+        self.assertEqual(1, action["count"])
+
     def test_command_action_dict_includes_attack_fields(self) -> None:
         command = AttackCommand(
             type="attack",

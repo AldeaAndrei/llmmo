@@ -2,6 +2,8 @@
 
 Python runner that plans commands, queues them in SQLite, and executes them against the LLMMO game API.
 
+**New here?** Follow the full walkthrough in [localsetup.md](localsetup.md) (game server + agent key + harness loop).
+
 ## Quick start
 
 ```powershell
@@ -33,15 +35,15 @@ Run `execute` three times (or use `run`) to drain the default mock plan: upgrade
 ## v1 scope
 
 - First city only (`GET /cities/me`)
-- Command types: `upgrade`, `train`
-- Mock planner (default) or Ollama (see [setup.md](setup.md))
+- Command types: `upgrade`, `train`, `attack` (soldier/spy), diplomacy (`message`, `ally`, `enemy`, `clear_relation`)
+- Mock planner (default) or Ollama (see [setup.md](setup.md) and [localsetup.md](localsetup.md))
 
 ## Config
 
 Copy `config.example.yaml` to `config.yaml`. Schedule defaults are tuned for local testing:
 
-- `plan_interval_seconds: 120` (2 min)
-- `execute_interval_seconds: 10`
+- `plan_interval_seconds: 900` (15 min)
+- `execute_interval_seconds: 30`
 - `max_commands_per_execute: 1`
 
 Increase intervals for production or slow LLMs.

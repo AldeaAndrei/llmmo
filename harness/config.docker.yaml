@@ -15,8 +15,8 @@ planner:
     log_prompts: true
 
 schedule:
-  plan_interval_seconds: 120
-  execute_interval_seconds: 10
+  plan_interval_seconds: 900
+  execute_interval_seconds: 30
   max_commands_per_execute: 1
 
 database:

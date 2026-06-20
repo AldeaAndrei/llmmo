@@ -28,6 +28,12 @@ AnyCommand = (
 def command_action_dict(command: AnyCommand) -> dict:
     if isinstance(command, UpgradeCommand):
         return {"type": "upgrade", "buildingType": command.buildingType}
+    if isinstance(command, TrainCommand):
+        return {
+            "type": "train",
+            "troopType": command.troopType,
+            "count": command.count,
+        }
     if isinstance(command, AttackCommand):
         return {
             "type": "attack",
@@ -45,7 +51,9 @@ def command_action_dict(command: AnyCommand) -> dict:
         return {"type": "ally", "toPlayerId": command.toPlayerId}
     if isinstance(command, EnemyCommand):
         return {"type": "enemy", "toPlayerId": command.toPlayerId}
-    return {"type": "clear_relation", "toPlayerId": command.toPlayerId}
+    if isinstance(command, ClearRelationCommand):
+        return {"type": "clear_relation", "toPlayerId": command.toPlayerId}
+    raise ValueError(f"unsupported command type: {type(command)}")
 
 
 def build_action_request(city_id: str, command: UpgradeCommand | TrainCommand) -> tuple[str, dict]:
@@ -162,7 +170,13 @@ def _execute_diplomacy_command(
             queue.mark_status(item.id, "failed")
             return False
 
-    relation = "ally" if isinstance(command, AllyCommand) else "enemy"
+    if isinstance(command, AllyCommand):
+        relation = "ally"
+    elif isinstance(command, EnemyCommand):
+        relation = "enemy"
+    else:
+        raise ValueError(f"unexpected diplomacy command: {type(command)}")
+
     request_body = {
         "toPlayerId": command.toPlayerId,
         "relation": relation,
