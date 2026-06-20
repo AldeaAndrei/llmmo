@@ -1,0 +1,23 @@
+[
+  {
+    "name": "early_neutral",
+    "wallLevel": 1,
+    "soldiers": 2,
+    "distance": 4,
+    "resources": { "gold": 50, "stone": 50, "wood": 50, "food": 30 }
+  },
+  {
+    "name": "midgame_neutral",
+    "wallLevel": 5,
+    "soldiers": 10,
+    "distance": 8,
+    "resources": { "gold": 200, "stone": 150, "wood": 150, "food": 100 }
+  },
+  {
+    "name": "lategame_neutral",
+    "wallLevel": 10,
+    "soldiers": 25,
+    "distance": 12,
+    "resources": { "gold": 400, "stone": 350, "wood": 350, "food": 200 }
+  }
+]

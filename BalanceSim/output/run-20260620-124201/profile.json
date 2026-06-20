@@ -1,0 +1,121 @@
+{
+  "MaxBuildingLevel": 20,
+  "BaseMaxResource": 1000,
+  "StorageBonusPerLevel": 150,
+  "ProductionPerLevel": 3,
+  "ScalingMode": 1,
+  "NCost": 10,
+  "NUpgradeTime": 10,
+  "NTrainTime": 5,
+  "BaseUpgradeTicks": 3,
+  "BaseTrainTicks": 5,
+  "WallDefencePerLevel": 4,
+  "BarracksTrainCapPerLevel": 4,
+  "UpgradeTicksPerLevel": 5,
+  "TrainDurationTicks": 3,
+  "CombatWinnerLossFactor": 0.5,
+  "CombatLoserWipeFactor": 0.9,
+  "SpySurvival": {
+    "Base": 0.5,
+    "BonusPerLevel": 0.015,
+    "Cap": 0.8
+  },
+  "BaseUpgradeCosts": {
+    "gold_mine": {
+      "Wood": 75,
+      "Stone": 45,
+      "Gold": 10,
+      "Food": 30
+    },
+    "stone_mine": {
+      "Wood": 60,
+      "Stone": 30,
+      "Gold": 15,
+      "Food": 22
+    },
+    "timber_station": {
+      "Wood": 45,
+      "Stone": 30,
+      "Gold": 15,
+      "Food": 22
+    },
+    "bakery": {
+      "Wood": 75,
+      "Stone": 52,
+      "Gold": 30,
+      "Food": 0
+    },
+    "storage_shed": {
+      "Wood": 60,
+      "Stone": 52,
+      "Gold": 30,
+      "Food": 22
+    },
+    "barracks": {
+      "Wood": 90,
+      "Stone": 60,
+      "Gold": 60,
+      "Food": 45
+    },
+    "spy_academy": {
+      "Wood": 75,
+      "Stone": 52,
+      "Gold": 45,
+      "Food": 30
+    },
+    "wall": {
+      "Wood": 67,
+      "Stone": 75,
+      "Gold": 22,
+      "Food": 15
+    }
+  },
+  "TroopConfigs": {
+    "soldier": {
+      "TrainCostPerUnit": {
+        "Wood": 0,
+        "Stone": 0,
+        "Gold": 10,
+        "Food": 1
+      },
+      "CapacityWood": 1,
+      "CapacityStone": 1,
+      "CapacityGold": 1,
+      "CapacityFood": 1,
+      "AttackMelee": 3,
+      "AttackRange": 1,
+      "UpkeepFood": 1,
+      "Speed": 1,
+      "CanScout": false,
+      "IsCombat": true,
+      "TrainAtBuilding": "barracks"
+    },
+    "spy": {
+      "TrainCostPerUnit": {
+        "Wood": 0,
+        "Stone": 0,
+        "Gold": 2,
+        "Food": 2
+      },
+      "CapacityWood": 0,
+      "CapacityStone": 0,
+      "CapacityGold": 0,
+      "CapacityFood": 0,
+      "AttackMelee": 0,
+      "AttackRange": 0,
+      "UpkeepFood": 1,
+      "Speed": 3,
+      "CanScout": true,
+      "IsCombat": false,
+      "TrainAtBuilding": "barracks"
+    }
+  },
+  "StarterCity": {
+    "Wood": 10,
+    "Stone": 10,
+    "Gold": 10,
+    "Food": 10,
+    "StarterSoldiers": 1
+  },
+  "ReferenceEndgameSoldiers": 500
+}

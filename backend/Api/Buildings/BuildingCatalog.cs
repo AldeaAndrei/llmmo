@@ -35,7 +35,7 @@ public static class BuildingCatalog
             rule.Name,
             rule.EffectKind == BuildingEffectKind.Production,
             rule.Resource,
-            rule.EffectKind == BuildingEffectKind.Production ? GameBalance.ProductionPerLevel : 0,
+            rule.EffectKind == BuildingEffectKind.Production ? BuildingRules.ProductionPerLevel : 0,
             rule.BaseUpgradeCost);
     }
 
@@ -56,4 +56,7 @@ public static class BuildingCatalog
 
     public static int UpgradeDurationTicks(int currentLevel) =>
         BuildingRules.UpgradeDurationTicks(currentLevel);
+
+    public static int TrainDurationTicks(int count, int barracksLevel) =>
+        BuildingRules.TrainDurationTicks(count, TrainCapacityAtLevel(barracksLevel));
 }

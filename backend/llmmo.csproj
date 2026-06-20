@@ -9,9 +9,23 @@
   <ItemGroup>
     <Compile Remove="WorldSetup/**" />
     <Compile Remove="CalcTests/**" />
+    <Compile Remove="BalanceSim/**" />
+    <Compile Remove="BalanceSimTests/**" />
     <Content Remove="WorldSetup/**" />
+    <Content Remove="BalanceSim/**" />
+    <Content Remove="BalanceSimTests/**" />
     <EmbeddedResource Remove="WorldSetup/**" />
+    <EmbeddedResource Remove="BalanceSim/**" />
+    <EmbeddedResource Remove="BalanceSimTests/**" />
     <None Remove="WorldSetup/**" />
+    <None Remove="BalanceSim/**" />
+    <None Remove="BalanceSimTests/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Config\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

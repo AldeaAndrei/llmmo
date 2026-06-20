@@ -97,11 +97,21 @@ public class ActionSubmissionService
 
         CityResources.Deduct(city, cost);
 
-        var durationTicks = ActionDurations.IsUpgradeSlotType(normalizedType)
-            ? ActionDurations.GetUpgradeDurationTicks(
+        int durationTicks;
+        if (ActionDurations.IsUpgradeSlotType(normalizedType))
+        {
+            durationTicks = ActionDurations.GetUpgradeDurationTicks(
                 city.Buildings.First(b =>
-                    b.Type.Equals(buildingType, StringComparison.OrdinalIgnoreCase)).Level)
-            : ActionDurations.GetDurationTicks(normalizedType);
+                    b.Type.Equals(buildingType, StringComparison.OrdinalIgnoreCase)).Level);
+        }
+        else
+        {
+            var trainCount = ActionPayloadHelper.GetTrainCount(payloadElement);
+            var barracksLevel = city.Buildings
+                .First(b => b.Type.Equals("barracks", StringComparison.OrdinalIgnoreCase)).Level;
+            durationTicks = ActionDurations.GetTrainDurationTicks(trainCount, barracksLevel);
+        }
+
         var action = new GameAction
         {
             Id = Guid.NewGuid(),
@@ -177,9 +187,9 @@ public class ActionSubmissionService
             return "Building not found in this city.";
         }
 
-        if (building.Level >= GameBalance.MaxBuildingLevel)
+        if (building.Level >= BuildingRules.MaxBuildingLevel)
         {
-            return $"Building is already at max level ({GameBalance.MaxBuildingLevel}).";
+            return $"Building is already at max level ({BuildingRules.MaxBuildingLevel}).";
         }
 
         cost = BuildingCatalog.UpgradeCostForLevel(building.Type, building.Level + 1);

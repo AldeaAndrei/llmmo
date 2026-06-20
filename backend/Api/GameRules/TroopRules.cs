@@ -23,6 +23,24 @@ public static class TroopRules
 {
     public static readonly string[] AllTypes = ["soldier", "spy"];
 
+    private static BalanceProfile? _engineProfile;
+    private static TroopRulesEngine? _engineInstance;
+
+    private static TroopRulesEngine DefaultEngine
+    {
+        get
+        {
+            var active = BalanceProfile.Active;
+            if (_engineInstance is null || !ReferenceEquals(active, _engineProfile))
+            {
+                _engineProfile = active;
+                _engineInstance = new TroopRulesEngine(active);
+            }
+
+            return _engineInstance;
+        }
+    }
+
     private static readonly Dictionary<string, TroopRule> ByType = new(StringComparer.OrdinalIgnoreCase)
     {
         ["soldier"] = new TroopRule(
@@ -59,32 +77,26 @@ public static class TroopRules
             TrainCostPerUnit: new BuildingUpgradeCost(0, 0, 2, 2)),
     };
 
+    public static TroopRulesEngine CreateEngine(BalanceProfile profile) => new(profile);
+
     public static bool IsValidType(string type) => ByType.ContainsKey(type);
 
     public static TroopRule Get(string type) => ByType[type];
 
-    public static int CombatPower(string type, int count)
-    {
-        var rule = Get(type);
-        return count * (rule.AttackMelee + rule.AttackRange);
-    }
+    public static TroopRule GetDefinition(string type) => Get(type);
 
-    public static int CarryCapacity(string type, int count)
-    {
-        var rule = Get(type);
-        return count * (rule.CapacityWood + rule.CapacityStone + rule.CapacityGold + rule.CapacityFood);
-    }
+    public static int CombatPower(string type, int count) =>
+        DefaultEngine.CombatPower(type, count);
+
+    public static int CarryCapacity(string type, int count) =>
+        DefaultEngine.CarryCapacity(type, count);
 
     public static BuildingUpgradeCost TrainCostForCount(string type, int count)
     {
-        var rule = Get(type);
-        return new BuildingUpgradeCost(
-            rule.TrainCostPerUnit.Wood * count,
-            rule.TrainCostPerUnit.Stone * count,
-            rule.TrainCostPerUnit.Gold * count,
-            rule.TrainCostPerUnit.Food * count);
+        var barracksCap = BalanceProfile.Active.BarracksTrainCapPerLevel;
+        return DefaultEngine.TrainCostForCount(type, count, barracksCap);
     }
 
     public static bool IsTrainableAt(string troopType, string buildingType) =>
-        Get(troopType).TrainAtBuilding.Equals(buildingType, StringComparison.OrdinalIgnoreCase);
+        DefaultEngine.IsTrainableAt(troopType, buildingType);
 }

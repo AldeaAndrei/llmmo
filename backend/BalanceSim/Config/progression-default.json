@@ -1,0 +1,21 @@
+{
+  "targetActiveHours": 70,
+  "activeHoursPerDay": 5,
+  "secondsPerTick": 5,
+  "checkpoints": [
+    { "day": 1,  "totalWealthPct": 12,  "economicWealthPct": 15,  "militaryWealthPct": 4 },
+    { "day": 2,  "totalWealthPct": 20,  "economicWealthPct": 24,  "militaryWealthPct": 9 },
+    { "day": 3,  "totalWealthPct": 28,  "economicWealthPct": 33,  "militaryWealthPct": 15 },
+    { "day": 4,  "totalWealthPct": 35,  "economicWealthPct": 41,  "militaryWealthPct": 21 },
+    { "day": 5,  "totalWealthPct": 42,  "economicWealthPct": 48,  "militaryWealthPct": 28 },
+    { "day": 6,  "totalWealthPct": 48,  "economicWealthPct": 54,  "militaryWealthPct": 34 },
+    { "day": 7,  "totalWealthPct": 55,  "economicWealthPct": 61,  "militaryWealthPct": 41 },
+    { "day": 8,  "totalWealthPct": 61,  "economicWealthPct": 67,  "militaryWealthPct": 48 },
+    { "day": 9,  "totalWealthPct": 67,  "economicWealthPct": 73,  "militaryWealthPct": 54 },
+    { "day": 10, "totalWealthPct": 73,  "economicWealthPct": 79,  "militaryWealthPct": 60 },
+    { "day": 11, "totalWealthPct": 80,  "economicWealthPct": 85,  "militaryWealthPct": 66 },
+    { "day": 12, "totalWealthPct": 87,  "economicWealthPct": 91,  "militaryWealthPct": 71 },
+    { "day": 13, "totalWealthPct": 94,  "economicWealthPct": 96,  "militaryWealthPct": 76 },
+    { "day": 14, "totalWealthPct": 100, "economicWealthPct": 100, "militaryWealthPct": 80 }
+  ]
+}

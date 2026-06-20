@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "concurrently -n backend,frontend -c blue,green \"dotnet watch run --project backend\" \"npm run dev --prefix frontend\"",
     "world:setup": "dotnet run --project backend/WorldSetup",
+    "balance:sim": "dotnet run --project backend/BalanceSim",
     "harness:plan": "python -m llmmo_harness.cli plan -c harness/config.yaml",
     "harness:execute": "python -m llmmo_harness.cli execute -c harness/config.yaml"
   },

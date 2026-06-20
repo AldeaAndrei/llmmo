@@ -1,4 +1,5 @@
 using llmmo.Api;
+using llmmo.Api.GameRules;
 using llmmo.Auth;
 using llmmo.Data;
 using llmmo.Tick;
@@ -6,6 +7,25 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Load the live balance profile (costs, durations, production, scaling curves) from a
+// JSON file produced by the BalanceSim search. Falls back to built-in defaults if absent.
+var balanceProfilePath = builder.Configuration.GetValue<string>("BalanceProfilePath");
+if (string.IsNullOrWhiteSpace(balanceProfilePath))
+{
+    balanceProfilePath = Path.Combine(builder.Environment.ContentRootPath, "Config", "balance-profile.json");
+}
+
+if (BalanceProfile.TryLoadActiveFromFile(balanceProfilePath))
+{
+    var active = BalanceProfile.Active;
+    Console.WriteLine($"[balance] Loaded profile from '{balanceProfilePath}' " +
+        $"(scaling={active.ScalingMode}, productionPerLevel={active.ProductionPerLevel}, baseUpgradeTicks={active.BaseUpgradeTicks}).");
+}
+else
+{
+    Console.WriteLine($"[balance] No profile at '{balanceProfilePath}'; using built-in default balance.");
+}
 
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");

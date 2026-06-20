@@ -67,6 +67,15 @@ public class BuildingRulesTests
         Assert.Equal(40, cost.Gold);
         Assert.Equal(0, cost.Food);
     }
+
+    [Theory]
+    [InlineData(1, 4, 1)]
+    [InlineData(10, 20, 10)]
+    [InlineData(5, 20, 5)]
+    public void TrainDurationTicks_ScalesWithCount(int count, int barracksCapacity, int expected)
+    {
+        Assert.Equal(expected, BuildingRules.TrainDurationTicks(count, barracksCapacity));
+    }
 }
 
 public class CityBuildingEffectsTests

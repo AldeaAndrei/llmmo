@@ -24,7 +24,7 @@ public static class PossibleActionsCalculator
 
         foreach (var building in city.Buildings)
         {
-            if (building.Level >= GameBalance.MaxBuildingLevel)
+            if (building.Level >= BuildingRules.MaxBuildingLevel)
             {
                 continue;
             }

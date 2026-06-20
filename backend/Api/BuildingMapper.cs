@@ -24,7 +24,7 @@ public static class BuildingMapper
             trainCapacity = BuildingRules.TrainCapacityAtLevel(building.Level);
         }
 
-        int? upgradeDuration = building.Level < GameBalance.MaxBuildingLevel
+        int? upgradeDuration = building.Level < BuildingRules.MaxBuildingLevel
             ? BuildingRules.UpgradeDurationTicks(building.Level)
             : null;
 
@@ -41,7 +41,7 @@ public static class BuildingMapper
                 ? rule.Resource!.Value.ToString().ToLowerInvariant()
                 : null,
             isBarracks,
-            building.Level < GameBalance.MaxBuildingLevel
+            building.Level < BuildingRules.MaxBuildingLevel
                 ? new BuildingUpgradeCostDto(nextCost.Wood, nextCost.Stone, nextCost.Gold, nextCost.Food)
                 : null,
             trainCostPerTroop,
@@ -57,13 +57,13 @@ public static class BuildingMapper
             rule.Description,
             rule.EffectKind.ToString(),
             BuildingRules.EffectFormulaText(type),
-            GameBalance.MaxBuildingLevel,
+            BuildingRules.MaxBuildingLevel,
             new BuildingUpgradeCostDto(
                 rule.BaseUpgradeCost.Wood,
                 rule.BaseUpgradeCost.Stone,
                 rule.BaseUpgradeCost.Gold,
                 rule.BaseUpgradeCost.Food),
-            rule.EffectKind == BuildingEffectKind.Production ? GameBalance.ProductionPerLevel : null,
+            rule.EffectKind == BuildingEffectKind.Production ? BuildingRules.ProductionPerLevel : null,
             rule.EffectKind == BuildingEffectKind.Production
                 ? rule.Resource!.Value.ToString().ToLowerInvariant()
                 : null);

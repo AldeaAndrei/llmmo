@@ -1,0 +1,439 @@
+{
+  "searchId": "search-2026-06-20-131435",
+  "strategy": "HybridSearchStrategy",
+  "candidatesEvaluated": 24,
+  "rankedProfiles": [
+    {
+      "rank": 1,
+      "profileId": "candidate-010",
+      "fitnessScore": -23.32989933704313,
+      "progressionMse": 5.516296230233697,
+      "paramDeltas": {
+        "nCost": 6.607602876115021,
+        "nUpgradeTime": 7.753214923640886,
+        "nTrainTime": 4.0120770191966,
+        "productionPerLevel": 4
+      },
+      "recommendedChanges": [
+        "n_cost=6.61",
+        "n_upgradeTime=7.75",
+        "n_trainTime=4.01",
+        "productionPerLevel=4 (default 3)"
+      ]
+    },
+    {
+      "rank": 2,
+      "profileId": "candidate-017",
+      "fitnessScore": -44.291085636748136,
+      "progressionMse": 8.715807803992323,
+      "paramDeltas": {
+        "nCost": 5.129629746328302,
+        "nUpgradeTime": 6.29292792434831,
+        "nTrainTime": 3.1812284519138725,
+        "productionPerLevel": 4
+      },
+      "recommendedChanges": [
+        "n_cost=5.13",
+        "n_upgradeTime=6.29",
+        "n_trainTime=3.18",
+        "productionPerLevel=4 (default 3)"
+      ]
+    },
+    {
+      "rank": 3,
+      "profileId": "candidate-012",
+      "fitnessScore": -73.30018699699725,
+      "progressionMse": 39.9375217056113,
+      "paramDeltas": {
+        "nCost": 4.746941112983329,
+        "nUpgradeTime": 8.539019433000545,
+        "nTrainTime": 2.861425906547874,
+        "productionPerLevel": 5
+      },
+      "recommendedChanges": [
+        "n_cost=4.75",
+        "n_upgradeTime=8.54",
+        "n_trainTime=2.86",
+        "productionPerLevel=5 (default 3)"
+      ]
+    },
+    {
+      "rank": 4,
+      "profileId": "candidate-013",
+      "fitnessScore": -77.10364079183086,
+      "progressionMse": 53.14987584653926,
+      "paramDeltas": {
+        "nCost": 6.928676515226081,
+        "nUpgradeTime": 7.752939197894363,
+        "nTrainTime": 4.006917617707084,
+        "productionPerLevel": 4
+      },
+      "recommendedChanges": [
+        "n_cost=6.93",
+        "n_upgradeTime=7.75",
+        "n_trainTime=4.01",
+        "productionPerLevel=4 (default 3)"
+      ]
+    },
+    {
+      "rank": 5,
+      "profileId": "candidate-000",
+      "fitnessScore": -83.26947649256594,
+      "progressionMse": 53.57591251850328,
+      "paramDeltas": {
+        "nCost": 7.639055692596186,
+        "nUpgradeTime": 3.679255358800892,
+        "nTrainTime": 7.012953423977436,
+        "productionPerLevel": 5
+      },
+      "recommendedChanges": [
+        "n_cost=7.64",
+        "n_upgradeTime=3.68",
+        "n_trainTime=7.01",
+        "productionPerLevel=5 (default 3)"
+      ]
+    },
+    {
+      "rank": 6,
+      "profileId": "candidate-014",
+      "fitnessScore": -87.89340766917117,
+      "progressionMse": 70.58920591278701,
+      "paramDeltas": {
+        "nCost": 7.3100493370296515,
+        "nUpgradeTime": 8.10133426432545,
+        "nTrainTime": 4.849300690250835,
+        "productionPerLevel": 5
+      },
+      "recommendedChanges": [
+        "n_cost=7.31",
+        "n_upgradeTime=8.10",
+        "n_trainTime=4.85",
+        "productionPerLevel=5 (default 3)"
+      ]
+    },
+    {
+      "rank": 7,
+      "profileId": "candidate-022",
+      "fitnessScore": -88.176839611915,
+      "progressionMse": 16.194016809189517,
+      "paramDeltas": {
+        "nCost": 8.4433391692673,
+        "nUpgradeTime": 7.873514500642336,
+        "nTrainTime": 2.852374540229703,
+        "productionPerLevel": 5
+      },
+      "recommendedChanges": [
+        "n_cost=8.44",
+        "n_upgradeTime=7.87",
+        "n_trainTime=2.85",
+        "productionPerLevel=5 (default 3)"
+      ]
+    },
+    {
+      "rank": 8,
+      "profileId": "candidate-015",
+      "fitnessScore": -124.84240965061578,
+      "progressionMse": 47.79109595050394,
+      "paramDeltas": {
+        "nCost": 4.843460441165919,
+        "nUpgradeTime": 6.153107662213042,
+        "nTrainTime": 3.661390014580028,
+        "productionPerLevel": 4
+      },
+      "recommendedChanges": [
+        "n_cost=4.84",
+        "n_upgradeTime=6.15",
+        "n_trainTime=3.66",
+        "productionPerLevel=4 (default 3)"
+      ]
+    },
+    {
+      "rank": 9,
+      "profileId": "candidate-002",
+      "fitnessScore": -129.39721583298916,
+      "progressionMse": 70.58333666710344,
+      "paramDeltas": {
+        "nCost": 8.751848356067418,
+        "nUpgradeTime": 7.510146391658112,
+        "nTrainTime": 6.214596852181301,
+        "productionPerLevel": 5
+      },
+      "recommendedChanges": [
+        "n_cost=8.75",
+        "n_upgradeTime=7.51",
+        "n_trainTime=6.21",
+        "productionPerLevel=5 (default 3)"
+      ]
+    },
+    {
+      "rank": 10,
+      "profileId": "candidate-021",
+      "fitnessScore": -162.34146276692172,
+      "progressionMse": 75.01070245188758,
+      "paramDeltas": {
+        "nCost": 6.972395587878772,
+        "nUpgradeTime": 6.456018154050812,
+        "nTrainTime": 3.440201407618424,
+        "productionPerLevel": 4
+      },
+      "recommendedChanges": [
+        "n_cost=6.97",
+        "n_upgradeTime=6.46",
+        "n_trainTime=3.44",
+        "productionPerLevel=4 (default 3)"
+      ]
+    },
+    {
+      "rank": 11,
+      "profileId": "candidate-018",
+      "fitnessScore": -417.59086525328354,
+      "progressionMse": 95.19626793448106,
+      "paramDeltas": {
+        "nCost": 7.080008014707205,
+        "nUpgradeTime": 9.394434249887496,
+        "nTrainTime": 3.8749026406928557,
+        "productionPerLevel": 3
+      },
+      "recommendedChanges": [
+        "n_cost=7.08",
+        "n_upgradeTime=9.39",
+        "n_trainTime=3.87",
+        "productionPerLevel=3 (default 3)"
+      ]
+    },
+    {
+      "rank": 12,
+      "profileId": "candidate-019",
+      "fitnessScore": -511.9937629795038,
+      "progressionMse": 229.6475577285461,
+      "paramDeltas": {
+        "nCost": 7.253570149983521,
+        "nUpgradeTime": 5.528677026851943,
+        "nTrainTime": 3.6019593624303434,
+        "productionPerLevel": 4
+      },
+      "recommendedChanges": [
+        "n_cost=7.25",
+        "n_upgradeTime=5.53",
+        "n_trainTime=3.60",
+        "productionPerLevel=4 (default 3)"
+      ]
+    },
+    {
+      "rank": 13,
+      "profileId": "candidate-006",
+      "fitnessScore": -524.1195200495193,
+      "progressionMse": 522.9891464189387,
+      "paramDeltas": {
+        "nCost": 9.510588573307212,
+        "nUpgradeTime": 1.7920919151520902,
+        "nTrainTime": 3.0168366633819663,
+        "productionPerLevel": 4
+      },
+      "recommendedChanges": [
+        "n_cost=9.51",
+        "n_upgradeTime=1.79",
+        "n_trainTime=3.02",
+        "productionPerLevel=4 (default 3)"
+      ]
+    },
+    {
+      "rank": 14,
+      "profileId": "candidate-007",
+      "fitnessScore": -648.0722844775185,
+      "progressionMse": 288.1231493345844,
+      "paramDeltas": {
+        "nCost": 5.228711392650908,
+        "nUpgradeTime": 6.793437275783531,
+        "nTrainTime": 7.59164809286669,
+        "productionPerLevel": 5
+      },
+      "recommendedChanges": [
+        "n_cost=5.23",
+        "n_upgradeTime=6.79",
+        "n_trainTime=7.59",
+        "productionPerLevel=5 (default 3)"
+      ]
+    },
+    {
+      "rank": 15,
+      "profileId": "candidate-011",
+      "fitnessScore": -700.4909078657665,
+      "progressionMse": 174.29727280415696,
+      "paramDeltas": {
+        "nCost": 4.67482382411827,
+        "nUpgradeTime": 4.739797627502968,
+        "nTrainTime": 5.651550402748168,
+        "productionPerLevel": 1
+      },
+      "recommendedChanges": [
+        "n_cost=4.67",
+        "n_upgradeTime=4.74",
+        "n_trainTime=5.65",
+        "productionPerLevel=1 (default 3)"
+      ]
+    },
+    {
+      "rank": 16,
+      "profileId": "candidate-008",
+      "fitnessScore": -810.8125502636489,
+      "progressionMse": 355.38700605487674,
+      "paramDeltas": {
+        "nCost": 8.289424276810568,
+        "nUpgradeTime": 2.5597421924316723,
+        "nTrainTime": 4.874144228867695,
+        "productionPerLevel": 2
+      },
+      "recommendedChanges": [
+        "n_cost=8.29",
+        "n_upgradeTime=2.56",
+        "n_trainTime=4.87",
+        "productionPerLevel=2 (default 3)"
+      ]
+    },
+    {
+      "rank": 17,
+      "profileId": "candidate-004",
+      "fitnessScore": -813.5003335940195,
+      "progressionMse": 308.79720242903966,
+      "paramDeltas": {
+        "nCost": 4.767768372410085,
+        "nUpgradeTime": 9.955248649796443,
+        "nTrainTime": 4.996253420346298,
+        "productionPerLevel": 5
+      },
+      "recommendedChanges": [
+        "n_cost=4.77",
+        "n_upgradeTime=9.96",
+        "n_trainTime=5.00",
+        "productionPerLevel=5 (default 3)"
+      ]
+    },
+    {
+      "rank": 18,
+      "profileId": "candidate-023",
+      "fitnessScore": -829.4208909160594,
+      "progressionMse": 212.28578249250936,
+      "paramDeltas": {
+        "nCost": 7.3525054440011095,
+        "nUpgradeTime": 8.60014653679986,
+        "nTrainTime": 4.662144872864644,
+        "productionPerLevel": 3
+      },
+      "recommendedChanges": [
+        "n_cost=7.35",
+        "n_upgradeTime=8.60",
+        "n_trainTime=4.66",
+        "productionPerLevel=3 (default 3)"
+      ]
+    },
+    {
+      "rank": 19,
+      "profileId": "candidate-020",
+      "fitnessScore": -975.7709387703945,
+      "progressionMse": 280.6876892018285,
+      "paramDeltas": {
+        "nCost": 5.27668678418432,
+        "nUpgradeTime": 9.671195897697778,
+        "nTrainTime": 3.615756614490627,
+        "productionPerLevel": 3
+      },
+      "recommendedChanges": [
+        "n_cost=5.28",
+        "n_upgradeTime=9.67",
+        "n_trainTime=3.62",
+        "productionPerLevel=3 (default 3)"
+      ]
+    },
+    {
+      "rank": 20,
+      "profileId": "candidate-016",
+      "fitnessScore": -1400.84935335745,
+      "progressionMse": 409.20197756831595,
+      "paramDeltas": {
+        "nCost": 7.829646322851472,
+        "nUpgradeTime": 8.423215023618303,
+        "nTrainTime": 4.256848696627973,
+        "productionPerLevel": 3
+      },
+      "recommendedChanges": [
+        "n_cost=7.83",
+        "n_upgradeTime=8.42",
+        "n_trainTime=4.26",
+        "productionPerLevel=3 (default 3)"
+      ]
+    },
+    {
+      "rank": 21,
+      "profileId": "candidate-001",
+      "fitnessScore": -2255.479881357611,
+      "progressionMse": 719.3031437785081,
+      "paramDeltas": {
+        "nCost": 9.421220265853789,
+        "nUpgradeTime": 6.855700642615417,
+        "nTrainTime": 5.575572037657992,
+        "productionPerLevel": 1
+      },
+      "recommendedChanges": [
+        "n_cost=9.42",
+        "n_upgradeTime=6.86",
+        "n_trainTime=5.58",
+        "productionPerLevel=1 (default 3)"
+      ]
+    },
+    {
+      "rank": 22,
+      "profileId": "candidate-009",
+      "fitnessScore": -2450.3023829163617,
+      "progressionMse": 1077.1825308645095,
+      "paramDeltas": {
+        "nCost": 9.418278372930072,
+        "nUpgradeTime": 2.3007633549709343,
+        "nTrainTime": 5.872447558283055,
+        "productionPerLevel": 5
+      },
+      "recommendedChanges": [
+        "n_cost=9.42",
+        "n_upgradeTime=2.30",
+        "n_trainTime=5.87",
+        "productionPerLevel=5 (default 3)"
+      ]
+    },
+    {
+      "rank": 23,
+      "profileId": "candidate-005",
+      "fitnessScore": -3534.1157709576632,
+      "progressionMse": 1350.726167318044,
+      "paramDeltas": {
+        "nCost": 11.034478549013217,
+        "nUpgradeTime": 1.7619619155722794,
+        "nTrainTime": 5.7200336651684065,
+        "productionPerLevel": 1
+      },
+      "recommendedChanges": [
+        "n_cost=11.03",
+        "n_upgradeTime=1.76",
+        "n_trainTime=5.72",
+        "productionPerLevel=1 (default 3)"
+      ]
+    },
+    {
+      "rank": 24,
+      "profileId": "candidate-003",
+      "fitnessScore": -5357.020374858697,
+      "progressionMse": 1535.2111073141598,
+      "paramDeltas": {
+        "nCost": 7.481972241441649,
+        "nUpgradeTime": 10.798565259410232,
+        "nTrainTime": 9.848851203399704,
+        "productionPerLevel": 1
+      },
+      "recommendedChanges": [
+        "n_cost=7.48",
+        "n_upgradeTime=10.80",
+        "n_trainTime=9.85",
+        "productionPerLevel=1 (default 3)"
+      ]
+    }
+  ]
+}

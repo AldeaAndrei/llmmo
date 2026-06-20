@@ -33,6 +33,32 @@ public static class BuildingRules
         "wall",
     ];
 
+    private static BalanceProfile? _engineProfile;
+    private static BuildingRulesEngine? _engineInstance;
+
+    // Bind to whatever profile is Active, rebuilding only when it changes (it is set
+    // once at startup), so all live cost/duration/production math follows the config.
+    private static BuildingRulesEngine DefaultEngine
+    {
+        get
+        {
+            var active = BalanceProfile.Active;
+            if (_engineInstance is null || !ReferenceEquals(active, _engineProfile))
+            {
+                _engineProfile = active;
+                _engineInstance = new BuildingRulesEngine(active);
+            }
+
+            return _engineInstance;
+        }
+    }
+
+    /// <summary>Max building level from the active balance profile.</summary>
+    public static int MaxBuildingLevel => BalanceProfile.Active.MaxBuildingLevel;
+
+    /// <summary>Production gained per building level from the active balance profile.</summary>
+    public static int ProductionPerLevel => BalanceProfile.Active.ProductionPerLevel;
+
     private static readonly Dictionary<string, BuildingRule> ByType = new(StringComparer.OrdinalIgnoreCase)
     {
         ["gold_mine"] = new BuildingRule(
@@ -77,73 +103,54 @@ public static class BuildingRules
             new BuildingUpgradeCost(45, 50, 15, 10)),
     };
 
+    public static BuildingRulesEngine CreateEngine(BalanceProfile profile) => new(profile);
+
     public static bool IsValidType(string type) => ByType.ContainsKey(type);
 
     public static BuildingRule Get(string type) => ByType[type];
 
-    public static int ProductionAtLevel(string type, int level)
-    {
-        var rule = Get(type);
-        if (rule.EffectKind != BuildingEffectKind.Production || level <= 0)
-        {
-            return 0;
-        }
+    public static BuildingRule GetDefinition(string type) => Get(type);
 
-        return GameBalance.ProductionPerLevel * level;
-    }
+    public static int ProductionAtLevel(string type, int level) =>
+        DefaultEngine.ProductionAtLevel(type, level);
 
     public static int StorageCapacityAtLevel(int level) =>
-        GameBalance.BaseMaxResource + GameBalance.StorageBonusPerLevel * Math.Max(0, level);
+        DefaultEngine.StorageCapacityAtLevel(level);
 
-    public static double SpySurvivalAtLevel(int academyLevel)
-    {
-        if (academyLevel <= 0)
-        {
-            return GameBalance.SpySurvivalBase;
-        }
-
-        var survival = GameBalance.SpySurvivalBase
-            + GameBalance.SpySurvivalBonusPerLevel * (academyLevel - 1);
-
-        return Math.Min(GameBalance.SpySurvivalCap, survival);
-    }
+    public static double SpySurvivalAtLevel(int academyLevel) =>
+        DefaultEngine.SpySurvivalAtLevel(academyLevel);
 
     public static int WallDefenceBonusAtLevel(int wallLevel) =>
-        GameBalance.WallDefencePerLevel * Math.Max(0, wallLevel);
+        DefaultEngine.WallDefenceBonusAtLevel(wallLevel);
 
     public static int TrainCapacityAtLevel(int barracksLevel) =>
-        GameBalance.BarracksTrainCapPerLevel * Math.Max(0, barracksLevel);
+        DefaultEngine.TrainCapacityAtLevel(barracksLevel);
 
-    public static BuildingUpgradeCost UpgradeCostForLevel(string type, int targetLevel)
-    {
-        var rule = Get(type);
-        var multiplier = Math.Max(1, targetLevel);
-
-        return new BuildingUpgradeCost(
-            rule.BaseUpgradeCost.Wood * multiplier,
-            rule.BaseUpgradeCost.Stone * multiplier,
-            rule.BaseUpgradeCost.Gold * multiplier,
-            rule.BaseUpgradeCost.Food * multiplier);
-    }
+    public static BuildingUpgradeCost UpgradeCostForLevel(string type, int targetLevel) =>
+        DefaultEngine.UpgradeCostForLevel(type, targetLevel);
 
     public static int UpgradeDurationTicks(int currentLevel) =>
-        Math.Max(1, currentLevel) * GameBalance.UpgradeTicksPerLevel;
+        DefaultEngine.UpgradeDurationTicks(currentLevel);
+
+    public static int TrainDurationTicks(int count, int barracksCapacity) =>
+        DefaultEngine.TrainDurationTicks(count, barracksCapacity);
 
     public static string EffectFormulaText(string type)
     {
         var rule = Get(type);
+        var profile = BalanceProfile.Active;
         return rule.EffectKind switch
         {
             BuildingEffectKind.Production =>
-                $"+{GameBalance.ProductionPerLevel} {rule.Resource!.Value.ToString().ToLowerInvariant()} per level per tick",
+                $"+{profile.ProductionPerLevel} {rule.Resource!.Value.ToString().ToLowerInvariant()} per level per tick",
             BuildingEffectKind.Storage =>
-                $"{GameBalance.BaseMaxResource} + {GameBalance.StorageBonusPerLevel} per level storage per resource",
+                $"{profile.BaseMaxResource} + {profile.StorageBonusPerLevel} per level storage per resource",
             BuildingEffectKind.Training =>
-                $"{GameBalance.BarracksTrainCapPerLevel} troops per train action per level",
+                $"{profile.BarracksTrainCapPerLevel} troops per train action per level",
             BuildingEffectKind.SpySurvival =>
-                $"{GameBalance.SpySurvivalBase:P0} + {GameBalance.SpySurvivalBonusPerLevel:P1} per level above 1 spy survival (max {GameBalance.SpySurvivalCap:P0})",
+                $"{profile.SpySurvival.Base:P0} + {profile.SpySurvival.BonusPerLevel:P1} per level above 1 spy survival (max {profile.SpySurvival.Cap:P0})",
             BuildingEffectKind.Defence =>
-                $"+{GameBalance.WallDefencePerLevel} defence power per level",
+                $"+{profile.WallDefencePerLevel} defence power per level",
             _ => string.Empty,
         };
     }
@@ -174,7 +181,8 @@ public static class BuildingRules
 
     public static string? FormatNextLevelEffect(string type, int currentLevel)
     {
-        if (currentLevel >= GameBalance.MaxBuildingLevel)
+        var profile = BalanceProfile.Active;
+        if (currentLevel >= profile.MaxBuildingLevel)
         {
             return null;
         }
@@ -186,13 +194,13 @@ public static class BuildingRules
             BuildingEffectKind.Production =>
                 $"+{ProductionAtLevel(type, nextLevel)} {rule.Resource!.Value.ToString().ToLowerInvariant()} per tick",
             BuildingEffectKind.Storage =>
-                $"{StorageCapacityAtLevel(nextLevel)} storage per resource (+{GameBalance.StorageBonusPerLevel})",
+                $"{StorageCapacityAtLevel(nextLevel)} storage per resource (+{profile.StorageBonusPerLevel})",
             BuildingEffectKind.Training =>
-                $"Train up to {TrainCapacityAtLevel(nextLevel)} troops per action (+{GameBalance.BarracksTrainCapPerLevel})",
+                $"Train up to {TrainCapacityAtLevel(nextLevel)} troops per action (+{profile.BarracksTrainCapPerLevel})",
             BuildingEffectKind.SpySurvival =>
-                $"{SpySurvivalAtLevel(nextLevel):P1} spy survival (+{GameBalance.SpySurvivalBonusPerLevel:P1})",
+                $"{SpySurvivalAtLevel(nextLevel):P1} spy survival (+{profile.SpySurvival.BonusPerLevel:P1})",
             BuildingEffectKind.Defence =>
-                $"+{WallDefenceBonusAtLevel(nextLevel)} defence power (+{GameBalance.WallDefencePerLevel})",
+                $"+{WallDefenceBonusAtLevel(nextLevel)} defence power (+{profile.WallDefencePerLevel})",
             _ => null,
         };
     }

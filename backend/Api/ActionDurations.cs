@@ -8,13 +8,11 @@ public static class ActionDurations
         type.Equals("upgrade", StringComparison.OrdinalIgnoreCase)
         || type.Equals("train", StringComparison.OrdinalIgnoreCase);
 
-    public static int GetDurationTicks(string type) =>
-        type.Equals("train", StringComparison.OrdinalIgnoreCase)
-            ? GameBalance.TrainDurationTicks
-            : throw new InvalidOperationException("Use GetUpgradeDurationTicks for upgrade actions.");
-
     public static int GetUpgradeDurationTicks(int currentLevel) =>
         BuildingRules.UpgradeDurationTicks(currentLevel);
+
+    public static int GetTrainDurationTicks(int count, int barracksLevel) =>
+        BuildingRules.TrainDurationTicks(count, BuildingRules.TrainCapacityAtLevel(barracksLevel));
 
     public static bool IsUpgradeSlotType(string type) =>
         type.Equals("upgrade", StringComparison.OrdinalIgnoreCase);
