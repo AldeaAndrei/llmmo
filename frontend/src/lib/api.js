@@ -81,6 +81,9 @@ export const api = {
   createAction: (body) =>
     request('/actions', { method: 'POST', body: JSON.stringify(body) }),
 
+  previewTrain: (body) =>
+    request('/actions/train/preview', { method: 'POST', body: JSON.stringify(body) }),
+
   getActions: (cityId) => request(`/actions?city_id=${cityId}`),
 
   getLlmActions: ({ includeDone = false, limit = 50 } = {}) => {

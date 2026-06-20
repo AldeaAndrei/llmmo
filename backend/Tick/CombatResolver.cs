@@ -12,12 +12,18 @@ public class CombatResolver
         City defenderCity)
     {
         var attackerPower = attackers.Sum(entry => TroopCatalog.CombatPower(entry.Type, entry.Count));
-        var defenderPowerRaw = defenderCity.Troops.Sum(entry =>
+        var defenderTroopPower = defenderCity.Troops.Sum(entry =>
             TroopCatalog.CombatPower(entry.Type, entry.Quantity));
         var wallLevel = defenderCity.Buildings
             .FirstOrDefault(b => b.Type.Equals("wall", StringComparison.OrdinalIgnoreCase))
             ?.Level ?? 0;
-        var defenderPower = defenderPowerRaw + BuildingRules.WallDefenceBonusAtLevel(wallLevel);
+        var wallBonus = BuildingRules.WallDefenceBonusAtLevel(wallLevel);
+        var defenderPower = defenderTroopPower + wallBonus;
+
+        var defenderTroopsBefore = defenderCity.Troops
+            .Where(t => t.Quantity > 0)
+            .Select(t => new TroopStackEntry(t.Type, t.Quantity))
+            .ToList();
 
         var attackerWins = attackerPower > defenderPower;
 
@@ -43,6 +49,9 @@ public class CombatResolver
             attackerWins,
             attackerPower,
             defenderPower,
+            defenderTroopPower,
+            wallBonus,
+            defenderTroopsBefore,
             survivors,
             attackerCasualties,
             defenderCasualties);
@@ -248,6 +257,9 @@ public record CombatResult(
     bool AttackerWins,
     int AttackerPower,
     int DefenderPower,
+    int DefenderTroopPower,
+    int WallDefenceBonus,
+    IReadOnlyList<TroopStackEntry> DefenderTroopsBefore,
     IReadOnlyList<TroopStackEntry> Survivors,
     IReadOnlyList<TroopStackEntry> AttackerCasualties,
     IReadOnlyDictionary<string, int> DefenderCasualties);

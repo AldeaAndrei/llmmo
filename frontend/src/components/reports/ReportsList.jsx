@@ -4,8 +4,14 @@ import { useReports } from '@/context/ReportsContext'
 import { useGameUI } from '@/context/GameUIContext'
 
 function formatReportTitle(report) {
-  const typeLabel = report.type === 'scout' ? 'Scout' : 'Attack'
-  return `${typeLabel} → (${report.targetX}, ${report.targetY})`
+  const isDefense = report.payload?.perspective === 'defender'
+  const typeLabel = report.type === 'scout'
+    ? 'Scout'
+    : isDefense
+      ? 'Defense'
+      : 'Attack'
+  const arrow = isDefense ? '←' : '→'
+  return `${typeLabel} ${arrow} (${report.targetX}, ${report.targetY})`
 }
 
 function formatReportTime(createdAt) {

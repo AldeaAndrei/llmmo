@@ -118,7 +118,7 @@ public class AttackMovementService
         if (attack.TargetCityId is null)
         {
             attack.Status = "failed";
-            WriteAttackReport(attack, attackers, null, false, [], new LootResult(0, 0, 0, 0));
+            WriteAttackReports(attack, attackers, null, null, false, new LootResult(0, 0, 0, 0));
             return;
         }
 
@@ -130,7 +130,7 @@ public class AttackMovementService
         if (defenderCity is null)
         {
             attack.Status = "failed";
-            WriteAttackReport(attack, attackers, null, false, [], new LootResult(0, 0, 0, 0));
+            WriteAttackReports(attack, attackers, null, null, false, new LootResult(0, 0, 0, 0));
             return;
         }
 
@@ -146,7 +146,7 @@ public class AttackMovementService
         if (!combat.AttackerWins || combat.Survivors.Count == 0)
         {
             attack.Status = "failed";
-            WriteAttackReport(attack, attackers, combat, false, combat.Survivors, new LootResult(0, 0, 0, 0));
+            WriteAttackReports(attack, attackers, combat, defenderCity, false, new LootResult(0, 0, 0, 0));
             return;
         }
 
@@ -164,7 +164,7 @@ public class AttackMovementService
         attack.Status = "returning";
         attack.ReturnsAtTick = currentTick + attack.ReturnDurationTicks;
 
-        WriteAttackReport(attack, attackers, combat, true, combat.Survivors, loot);
+        WriteAttackReports(attack, attackers, combat, defenderCity, true, loot);
     }
 
     private async Task CompleteReturnAsync(
@@ -216,25 +216,20 @@ public class AttackMovementService
         troop.Quantity += count;
     }
 
-    private void WriteAttackReport(
+    private void WriteAttackReports(
         MilitaryAttack attack,
         IReadOnlyList<TroopStackEntry> committed,
         CombatResult? combat,
+        City? defenderCity,
         bool attackerWins,
-        IReadOnlyList<TroopStackEntry> survivors,
         LootResult loot)
     {
-        var payload = new
-        {
-            outcome = attackerWins ? "victory" : "defeat",
-            attackerPower = combat?.AttackerPower,
-            defenderPower = combat?.DefenderPower,
-            committed = committed.Select(t => new { type = t.Type, count = t.Count }),
-            attackerCasualties = combat?.AttackerCasualties.Select(t => new { type = t.Type, count = t.Count }),
-            defenderCasualties = combat?.DefenderCasualties,
-            survivors = survivors.Select(t => new { type = t.Type, count = t.Count }),
-            loot = ReportPayloadHelper.ToLoot(loot.Wood, loot.Stone, loot.Gold, loot.Food),
-        };
+        var attackerPayload = BuildAttackPayload(
+            perspective: "attacker",
+            viewerWins: attackerWins,
+            combat,
+            committed,
+            loot);
 
         _db.Reports.Add(new Report
         {
@@ -246,7 +241,70 @@ public class AttackMovementService
             TargetCityId = attack.TargetCityId,
             TargetX = attack.TargetX,
             TargetY = attack.TargetY,
-            Payload = ReportPayloadHelper.Serialize(payload),
+            Payload = ReportPayloadHelper.Serialize(attackerPayload),
         });
+
+        if (defenderCity is null || defenderCity.PlayerId == attack.PlayerId)
+        {
+            return;
+        }
+
+        var defenderPayload = BuildAttackPayload(
+            perspective: "defender",
+            viewerWins: !attackerWins,
+            combat,
+            committed,
+            loot);
+
+        // Point the defender's list entry at the attacker's origin so it reads
+        // "Defense ← (sourceX, sourceY)" rather than their own city coords.
+        var sourceCity = attack.SourceCity;
+        _db.Reports.Add(new Report
+        {
+            Id = Guid.NewGuid(),
+            PlayerId = defenderCity.PlayerId,
+            Type = "attack",
+            AttackId = attack.Id,
+            SourceCityId = attack.SourceCityId,
+            TargetCityId = defenderCity.Id,
+            TargetX = sourceCity.X,
+            TargetY = sourceCity.Y,
+            Payload = ReportPayloadHelper.Serialize(defenderPayload),
+        });
+    }
+
+    private static object BuildAttackPayload(
+        string perspective,
+        bool viewerWins,
+        CombatResult? combat,
+        IReadOnlyList<TroopStackEntry> committed,
+        LootResult loot)
+    {
+        object? attacker = null;
+        object? defender = null;
+
+        if (combat is not null)
+        {
+            attacker = ReportPayloadHelper.ToAttackerSide(
+                combat.AttackerPower,
+                committed,
+                combat.AttackerCasualties);
+
+            defender = ReportPayloadHelper.ToDefenderSide(
+                combat.DefenderPower,
+                combat.DefenderTroopPower,
+                combat.WallDefenceBonus,
+                combat.DefenderTroopsBefore,
+                combat.DefenderCasualties);
+        }
+
+        return new
+        {
+            perspective,
+            outcome = viewerWins ? "victory" : "defeat",
+            attacker,
+            defender,
+            loot = ReportPayloadHelper.ToLoot(loot.Wood, loot.Stone, loot.Gold, loot.Food),
+        };
     }
 }

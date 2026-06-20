@@ -89,14 +89,107 @@ function formatCasualties(casualties) {
   )
 }
 
+function formatTroopCasualtyLine(troops) {
+  if (!troops?.length) {
+    return null
+  }
+
+  return troops
+    .map((troop) => {
+      const remaining = troop.remaining ?? troop.count ?? troop.quantity ?? 0
+      const lost = troop.lost ?? 0
+      if (lost > 0) {
+        return `${troop.type} ${remaining} (-${lost})`
+      }
+      return `${troop.type} ${remaining}`
+    })
+    .join(' | ')
+}
+
+function formatDefenderPower(defender) {
+  if (!defender) {
+    return null
+  }
+
+  const total = defender.totalPower ?? defender.total
+  const troopPower = defender.troopPower ?? 0
+  const wallBonus = defender.wallBonus ?? 0
+
+  if (total == null) {
+    return null
+  }
+
+  if (wallBonus > 0) {
+    return `Defence power ${total} (${troopPower} troops + ${wallBonus} wall)`
+  }
+
+  return `Defence power ${total} (${troopPower} troops)`
+}
+
+function formatAttackerPower(attacker) {
+  if (!attacker || attacker.totalPower == null) {
+    return null
+  }
+
+  return `Attack power ${attacker.totalPower}`
+}
+
+function CombatSideSection({ title, powerLine, troops }) {
+  const casualtyLine = formatTroopCasualtyLine(troops)
+  if (!powerLine && !casualtyLine) {
+    return null
+  }
+
+  return (
+    <PayloadSection title={title}>
+      {powerLine && <p>{powerLine}</p>}
+      {casualtyLine && <p className="font-mono text-xs">{casualtyLine}</p>}
+    </PayloadSection>
+  )
+}
+
 function AttackPayload({ payload }) {
   if (!payload || typeof payload !== 'object') {
     return null
   }
 
+  const isDefense = payload.perspective === 'defender'
   const outcome =
     payload.outcome === 'victory' ? 'Victory' : 'Defeat'
 
+  const hasNewFormat = payload.attacker || payload.defender
+
+  if (hasNewFormat) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-medium">{outcome}</p>
+
+        <CombatSideSection
+          title="Attacker"
+          powerLine={formatAttackerPower(payload.attacker)}
+          troops={payload.attacker?.troops}
+        />
+
+        <CombatSideSection
+          title={isDefense ? 'Defender (you)' : 'Defender'}
+          powerLine={formatDefenderPower(payload.defender)}
+          troops={payload.defender?.troops}
+        />
+
+        {payload.loot &&
+          (payload.loot.wood > 0 ||
+            payload.loot.stone > 0 ||
+            payload.loot.gold > 0 ||
+            payload.loot.food > 0) && (
+          <PayloadSection title={isDefense ? 'Resources lost' : 'Loot'}>
+            <p>{formatResourceLine(payload.loot)}</p>
+          </PayloadSection>
+        )}
+      </div>
+    )
+  }
+
+  // Legacy reports (before structured troop snapshots)
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium">{outcome}</p>
@@ -107,7 +200,7 @@ function AttackPayload({ payload }) {
         </p>
       )}
       {payload.committed?.length > 0 && (
-        <PayloadSection title="Committed">
+        <PayloadSection title="Attacking force">
           <TroopLines troops={payload.committed} />
         </PayloadSection>
       )}
@@ -117,17 +210,17 @@ function AttackPayload({ payload }) {
         </PayloadSection>
       )}
       {payload.defenderCasualties && (
-        <PayloadSection title="Defender casualties">
+        <PayloadSection title={isDefense ? 'Your casualties' : 'Defender casualties'}>
           {formatCasualties(payload.defenderCasualties)}
         </PayloadSection>
       )}
-      {payload.survivors?.length > 0 && (
+      {!isDefense && payload.survivors?.length > 0 && (
         <PayloadSection title="Survivors">
           <TroopLines troops={payload.survivors} />
         </PayloadSection>
       )}
       {payload.loot && (
-        <PayloadSection title="Loot">
+        <PayloadSection title={isDefense ? 'Resources lost' : 'Loot'}>
           <p>{formatResourceLine(payload.loot)}</p>
         </PayloadSection>
       )}
@@ -156,14 +249,21 @@ function ReportDetail({ selection }) {
     )
   }
 
-  const typeLabel = report.type === 'scout' ? 'Scout report' : 'Attack report'
+  const isDefense = report.payload?.perspective === 'defender'
+  const typeLabel =
+    report.type === 'scout'
+      ? 'Scout report'
+      : isDefense
+        ? 'Defense report'
+        : 'Attack report'
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold">{typeLabel}</h2>
         <p className="text-sm text-muted-foreground">
-          Target {formatLocation(report.targetX, report.targetY)}
+          {isDefense ? 'Attacked from' : 'Target'}{' '}
+          {formatLocation(report.targetX, report.targetY)}
         </p>
         <p className="text-sm text-muted-foreground">
           {new Date(report.createdAt).toLocaleString()}

@@ -90,6 +90,7 @@ function BuildingDetail({ selection }) {
   }
 
   return (
+    <>
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold">{building.name}</h2>
@@ -154,6 +155,7 @@ function BuildingDetail({ selection }) {
       <CityActionsList cityId={primaryCity?.id} ownedOnly />
 
       <TroopMovementsList cityId={primaryCity?.id} ownedOnly />
+    </div>
 
       <TrainTroopModal
         open={trainOpen}
@@ -163,7 +165,7 @@ function BuildingDetail({ selection }) {
         onSubmit={handleTrain}
         submitting={submitting}
       />
-    </div>
+    </>
   )
 }
 

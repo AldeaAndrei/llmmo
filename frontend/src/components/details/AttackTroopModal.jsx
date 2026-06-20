@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,6 +11,69 @@ import {
 } from '@/components/ui/dialog'
 import { api } from '@/lib/api'
 
+function carryCapacity(troop) {
+  return (
+    (troop.capacityWood ?? 0) +
+    (troop.capacityStone ?? 0) +
+    (troop.capacityGold ?? 0) +
+    (troop.capacityFood ?? 0)
+  )
+}
+
+function TroopPartyCard({
+  troop,
+  count,
+  onCountChange,
+  sendLabel = 'Send count',
+  readOnly = false,
+}) {
+  const maxAvailable = troop.quantity ?? 0
+  const countNum = Math.max(0, Number.parseInt(count ?? '', 10) || 0)
+  const hasSelection = countNum > 0
+
+  return (
+    <div
+      className={`rounded-md border p-3 space-y-2 ${
+        hasSelection ? 'border-primary bg-primary/5' : 'border-border'
+      }`}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-medium capitalize">{troop.name}</h3>
+        <p className="text-xs text-muted-foreground font-mono">
+          melee {troop.attackMelee} · range {troop.attackRange} · speed{' '}
+          {troop.speed} · carry {carryCapacity(troop)}
+        </p>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        <span className="text-foreground">Available: </span>
+        {maxAvailable}
+      </p>
+
+      <div className="flex items-center gap-2">
+        <label
+          className="text-sm text-muted-foreground shrink-0"
+          htmlFor={`party-count-${troop.type}`}
+        >
+          {sendLabel}
+        </label>
+        <input
+          id={`party-count-${troop.type}`}
+          type="number"
+          min={0}
+          max={maxAvailable}
+          value={count}
+          readOnly={readOnly}
+          disabled={readOnly}
+          onChange={(e) => onCountChange(troop.type, e.target.value)}
+          className="w-24 rounded-md border bg-background px-2 py-1.5 text-sm disabled:opacity-70"
+        />
+        <span className="text-xs text-muted-foreground">max {maxAvailable}</span>
+      </div>
+    </div>
+  )
+}
+
 function AttackTroopModal({
   open,
   onOpenChange,
@@ -21,47 +84,89 @@ function AttackTroopModal({
   targetY,
   onSuccess,
 }) {
+  const prevOpenRef = useRef(false)
+  const sourceCityRef = useRef(sourceCity)
+  const targetRef = useRef({ targetCityId, targetX, targetY })
+  sourceCityRef.current = sourceCity
+  targetRef.current = { targetCityId, targetX, targetY }
+
+  const [session, setSession] = useState(null)
   const [counts, setCounts] = useState({})
   const [preview, setPreview] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const combatTroops = useMemo(
-    () => (sourceCity?.troops ?? []).filter((t) => t.isCombat && t.quantity > 0),
-    [sourceCity?.troops],
-  )
+  const isScout = mode === 'scout'
 
-  const spyTroop = useMemo(
-    () => (sourceCity?.troops ?? []).find((t) => t.type === 'spy'),
-    [sourceCity?.troops],
-  )
-
+  // Snapshot party + target once when the modal opens — not on every poll.
   useEffect(() => {
-    if (!open) return
+    const justOpened = open && !prevOpenRef.current
+    prevOpenRef.current = open
 
-    if (mode === 'scout') {
-      setCounts({ spy: 1 })
-    } else {
-      const initial = {}
-      for (const troop of combatTroops) {
-        initial[troop.type] = 0
-      }
-      setCounts(initial)
+    if (!open) {
+      setSession(null)
+      setCounts({})
+      setPreview(null)
+      return
     }
+
+    if (!justOpened) {
+      return
+    }
+
+    const snapshotCity = sourceCityRef.current
+    const snapshotTarget = targetRef.current
+    if (!snapshotCity?.id) {
+      return
+    }
+
+    const combatTroops = (snapshotCity.troops ?? []).filter(
+      (t) => t.isCombat && t.quantity > 0,
+    )
+    const spyTroop = (snapshotCity.troops ?? []).find((t) => t.type === 'spy')
+
+    const troops = isScout
+      ? spyTroop && spyTroop.quantity > 0
+        ? [spyTroop]
+        : []
+      : combatTroops
+
+    setSession({
+      sourceCityId: snapshotCity.id,
+      targetCityId: snapshotTarget.targetCityId ?? null,
+      targetX: snapshotTarget.targetX,
+      targetY: snapshotTarget.targetY,
+      troops,
+    })
+
+    const initial = {}
+    for (const troop of troops) {
+      initial[troop.type] = isScout ? '1' : ''
+    }
+    setCounts(initial)
     setPreview(null)
-  }, [open, mode, combatTroops])
+  }, [open, isScout])
 
   const troopsPayload = useMemo(() => {
-    if (mode === 'scout') {
+    if (!session) {
+      return []
+    }
+
+    if (isScout) {
       return [{ type: 'spy', count: 1 }]
     }
 
-    return Object.entries(counts)
-      .filter(([, count]) => count > 0)
-      .map(([type, count]) => ({ type, count: Number(count) }))
-  }, [mode, counts])
+    return session.troops
+      .map((troop) => ({
+        type: troop.type,
+        count: Math.max(0, Number.parseInt(counts[troop.type] ?? '', 10) || 0),
+      }))
+      .filter((entry) => entry.count > 0)
+  }, [session, isScout, counts])
+
+  const partySize = troopsPayload.reduce((sum, entry) => sum + entry.count, 0)
 
   useEffect(() => {
-    if (!open || !sourceCity?.id || troopsPayload.length === 0) {
+    if (!open || !session?.sourceCityId || troopsPayload.length === 0) {
       setPreview(null)
       return
     }
@@ -70,10 +175,10 @@ function AttackTroopModal({
 
     api
       .previewAttack({
-        sourceCityId: sourceCity.id,
-        targetCityId: targetCityId ?? null,
-        targetX,
-        targetY,
+        sourceCityId: session.sourceCityId,
+        targetCityId: session.targetCityId,
+        targetX: session.targetX,
+        targetY: session.targetY,
         type: mode,
         troops: troopsPayload,
       })
@@ -87,16 +192,38 @@ function AttackTroopModal({
     return () => {
       cancelled = true
     }
-  }, [open, sourceCity?.id, targetCityId, targetX, targetY, mode, troopsPayload])
+  }, [open, session, mode, troopsPayload])
+
+  const handleCountChange = (type, rawValue) => {
+    const troop = session?.troops.find((t) => t.type === type)
+    const maxAvailable = troop?.quantity ?? 0
+
+    if (rawValue === '') {
+      setCounts((prev) => ({ ...prev, [type]: '' }))
+      return
+    }
+
+    const parsed = Number.parseInt(rawValue, 10)
+    if (Number.isNaN(parsed)) {
+      return
+    }
+
+    const clamped = Math.min(maxAvailable, Math.max(0, parsed))
+    setCounts((prev) => ({ ...prev, [type]: String(clamped) }))
+  }
 
   const handleSubmit = async () => {
+    if (!session?.sourceCityId || troopsPayload.length === 0) {
+      return
+    }
+
     setSubmitting(true)
     try {
       await api.createAttack({
-        sourceCityId: sourceCity.id,
-        targetCityId: targetCityId ?? null,
-        targetX,
-        targetY,
+        sourceCityId: session.sourceCityId,
+        targetCityId: session.targetCityId,
+        targetX: session.targetX,
+        targetY: session.targetY,
         type: mode,
         troops: troopsPayload,
       })
@@ -109,76 +236,99 @@ function AttackTroopModal({
     }
   }
 
-  const canSubmit = preview?.valid === true && !submitting
-  const hasSpy = (spyTroop?.quantity ?? 0) >= 1
+  const totalTravelTicks =
+    preview?.valid && preview.outboundTicks != null
+      ? isScout
+        ? preview.outboundTicks
+        : preview.outboundTicks + (preview.returnTicks ?? 0)
+      : null
+
+  const canSubmit = preview?.valid === true && !submitting && partySize > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{mode === 'scout' ? 'Scout tile' : 'Attack city'}</DialogTitle>
+          <DialogTitle>{isScout ? 'Scout tile' : 'Attack city'}</DialogTitle>
           <DialogDescription>
-            Target ({targetX}, {targetY})
-            {preview?.valid && (
+            Target ({session?.targetX ?? targetX}, {session?.targetY ?? targetY})
+            {preview?.valid && preview.manhattan != null && (
               <>
                 {' '}
-                · {preview.manhattan} tiles · {preview.outboundTicks} tick
-                {preview.outboundTicks === 1 ? '' : 's'} outbound
+                · {preview.manhattan} tile{preview.manhattan === 1 ? '' : 's'}
               </>
             )}
           </DialogDescription>
         </DialogHeader>
 
-        {mode === 'scout' ? (
-          <p className="text-sm">
-            Send 1 spy (available: {spyTroop?.quantity ?? 0})
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {combatTroops.map((troop) => (
-              <div key={troop.type} className="flex items-center justify-between gap-2">
-                <label className="text-sm capitalize" htmlFor={`troop-${troop.type}`}>
-                  {troop.name} ({troop.quantity} available)
-                </label>
-                <input
-                  id={`troop-${troop.type}`}
-                  type="number"
-                  min={0}
-                  max={troop.quantity}
-                  value={counts[troop.type] ?? 0}
-                  onChange={(e) =>
-                    setCounts((prev) => ({
-                      ...prev,
-                      [troop.type]: Math.min(
-                        troop.quantity,
-                        Math.max(0, Number(e.target.value) || 0),
-                      ),
-                    }))
-                  }
-                  className="w-20 rounded-md border bg-background px-2 py-1 text-sm"
-                />
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="space-y-3">
+          {session?.troops.map((troop) => (
+            <TroopPartyCard
+              key={troop.type}
+              troop={troop}
+              count={counts[troop.type] ?? ''}
+              onCountChange={handleCountChange}
+              sendLabel={isScout ? 'Scouts to send' : 'Send count'}
+              readOnly={isScout}
+            />
+          ))}
 
-        {preview?.errors?.length > 0 && (
-          <ul className="space-y-1 text-sm text-destructive">
-            {preview.errors.map((error) => (
-              <li key={error}>{error}</li>
-            ))}
-          </ul>
-        )}
+          {session && session.troops.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              {isScout
+                ? 'No spies available to scout.'
+                : 'No combat troops available to send.'}
+            </p>
+          )}
+
+          {preview?.errors?.length > 0 && partySize > 0 && (
+            <ul className="space-y-1 text-sm text-destructive">
+              {preview.errors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          )}
+
+          {partySize > 0 && preview && (
+            <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
+              {preview.partySpeed != null && (
+                <p>
+                  <span className="text-muted-foreground">Party speed: </span>
+                  {preview.partySpeed}
+                </p>
+              )}
+              {preview.outboundTicks != null && (
+                <p>
+                  <span className="text-muted-foreground">Outbound: </span>
+                  {preview.outboundTicks} tick
+                  {preview.outboundTicks === 1 ? '' : 's'}
+                </p>
+              )}
+              {!isScout && preview.returnTicks != null && (
+                <p>
+                  <span className="text-muted-foreground">Return: </span>
+                  {preview.returnTicks} tick
+                  {preview.returnTicks === 1 ? '' : 's'}
+                </p>
+              )}
+              {totalTravelTicks != null && (
+                <p className="font-medium">
+                  <span className="text-muted-foreground font-normal">
+                    Total {isScout ? 'travel' : 'attack'} time:{' '}
+                  </span>
+                  {totalTravelTicks} tick{totalTravelTicks === 1 ? '' : 's'}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!canSubmit || (mode === 'scout' && !hasSpy)}
-          >
-            {mode === 'scout' ? 'Send spy' : 'Launch attack'}
+          <Button onClick={handleSubmit} disabled={!canSubmit}>
+            {isScout ? 'Send spy' : 'Launch attack'}
           </Button>
         </DialogFooter>
       </DialogContent>

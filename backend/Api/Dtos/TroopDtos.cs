@@ -106,6 +106,31 @@ public record ReportDto(
 
 public record CityResourcesDto(int Wood, int Stone, int Gold, int Food);
 
+public record TrainPreviewLineRequest(string Type, int Count);
+
+public record TrainPreviewRequest(
+    Guid CityId,
+    IReadOnlyList<TrainPreviewLineRequest> Lines);
+
+public record TrainPreviewLineDto(
+    string Type,
+    string Name,
+    int Count,
+    int AttackMelee,
+    int AttackRange,
+    int Speed,
+    int CarryCapacity,
+    BuildingUpgradeCostDto Cost,
+    int DurationTicks);
+
+public record TrainPreviewDto(
+    bool Valid,
+    IReadOnlyList<string> Errors,
+    int MaxCapacity,
+    int TotalDurationTicks,
+    BuildingUpgradeCostDto TotalCost,
+    IReadOnlyList<TrainPreviewLineDto> Lines);
+
 public record CityVisibilityDto(
     Guid Id,
     Guid PlayerId,

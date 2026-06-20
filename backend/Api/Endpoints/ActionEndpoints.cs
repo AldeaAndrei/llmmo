@@ -13,8 +13,36 @@ public static class ActionEndpoints
     {
         group.MapGet("/actions/llm", ListLlmActions);
         group.MapGet("/actions", ListActions).RequireAuth();
+        group.MapPost("/actions/train/preview", PreviewTrain).RequireAuth();
         group.MapPost("/actions", CreateAction).RequireAuth();
         return group;
+    }
+
+    private static async Task<IResult> PreviewTrain(
+        TrainPreviewRequest request,
+        HttpContext httpContext,
+        AppDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var auth = httpContext.GetPlayerAuth()!;
+
+        var city = await db.Cities.AsNoTracking()
+            .Include(c => c.Buildings)
+            .FirstOrDefaultAsync(c => c.Id == request.CityId, cancellationToken);
+
+        if (city is null)
+        {
+            return Results.NotFound(new { error = "City not found." });
+        }
+
+        if (city.PlayerId != auth.PlayerId)
+        {
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        var lines = request.Lines ?? [];
+        var preview = TrainPreviewCalculator.Preview(city, lines);
+        return Results.Ok(preview);
     }
 
     private static async Task<IResult> ListLlmActions(

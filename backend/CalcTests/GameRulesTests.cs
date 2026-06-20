@@ -139,6 +139,9 @@ public class CombatResolverTests
 
         Assert.True(result.AttackerWins);
         Assert.Equal(50, result.DefenderPower);
+        Assert.Equal(0, result.DefenderTroopPower);
+        Assert.Equal(50, result.WallDefenceBonus);
+        Assert.Empty(result.DefenderTroopsBefore);
     }
 }
 
