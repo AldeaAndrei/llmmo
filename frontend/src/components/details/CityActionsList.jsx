@@ -1,4 +1,5 @@
 import { useCityActions } from '@/hooks/useCityActions'
+import { useTickTime } from '@/hooks/useTickTime'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { useWorld } from '@/context/WorldContext'
@@ -18,23 +19,24 @@ function statusLabel(status) {
   return status.replace('_', ' ')
 }
 
-function formatTiming(action, currentTick) {
+function formatTiming(action, currentTick, formatRemainingLabel, formatTicksAsDuration) {
   if (action.status === 'in_progress' && action.readyAtTick != null) {
     const remaining = Math.max(0, action.readyAtTick - currentTick)
-    return `${remaining} tick${remaining === 1 ? '' : 's'} remaining`
+    return formatRemainingLabel(remaining)
   }
 
-  if (action.status === 'in_progress') {
-    return `${action.durationTicks} tick${action.durationTicks === 1 ? '' : 's'} duration`
+  if (action.status === 'in_progress' && action.durationTicks != null) {
+    return `${formatTicksAsDuration(action.durationTicks)} duration`
   }
 
-  return `Submitted tick ${action.submittedAtTick}`
+  return 'Queued'
 }
 
 function CityActionsList({ cityId, title = 'Actions', ownedOnly = false }) {
   const { isAuthenticated, playerId } = useAuth()
   const { cities } = useGameData()
   const { currentTick } = useWorld()
+  const { formatRemainingLabel, formatTicksAsDuration } = useTickTime()
   const isOwned =
     !ownedOnly ||
     (cityId && cities.some((city) => city.id === cityId && city.playerId === playerId))
@@ -84,7 +86,12 @@ function CityActionsList({ cityId, title = 'Actions', ownedOnly = false }) {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {formatTiming(action, currentTick)}
+                  {formatTiming(
+                    action,
+                    currentTick,
+                    formatRemainingLabel,
+                    formatTicksAsDuration,
+                  )}
                 </p>
                 {payloadText && (
                   <p className="mt-1 text-xs text-muted-foreground">{payloadText}</p>

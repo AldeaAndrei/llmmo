@@ -1,7 +1,9 @@
 import { useWorld } from '@/context/WorldContext'
+import { useTickTime } from '@/hooks/useTickTime'
 
 function PublicTickBar() {
-  const { currentTick, secondsUntilNextTick, loading } = useWorld()
+  const { secondsUntilNextTick, loading, currentTick } = useWorld()
+  const { formatDuration } = useTickTime()
 
   if (loading && currentTick === 0) {
     return (
@@ -12,11 +14,13 @@ function PublicTickBar() {
   }
 
   const countdown =
-    secondsUntilNextTick != null ? `${secondsUntilNextTick}s` : '…'
+    secondsUntilNextTick != null
+      ? formatDuration(secondsUntilNextTick)
+      : '…'
 
   return (
     <div className="border-b px-4 py-2 text-sm text-muted-foreground">
-      Tick {currentTick} · next in {countdown}
+      Next update in {countdown}
     </div>
   )
 }

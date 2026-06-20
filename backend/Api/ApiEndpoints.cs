@@ -17,6 +17,7 @@ public static class ApiEndpoints
         api.MapCatalogEndpoints();
         api.MapAttackEndpoints();
         api.MapReportEndpoints();
+        api.MapDiplomacyEndpoints();
 
         return app;
     }

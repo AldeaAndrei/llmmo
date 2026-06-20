@@ -14,6 +14,34 @@ def format_recent_decisions(records: list) -> list[dict]:
 
 def compact_possible_actions(actions: dict) -> dict:
     """Trim possible-actions payload for the LLM prompt."""
+    diplomacy = actions.get("diplomacy") or {}
+    players = diplomacy.get("players") or []
+    latest_unread = diplomacy.get("latestUnreadMessage")
+
+    compact_diplomacy = {
+        "players": [
+            {
+                "playerId": player.get("playerId"),
+                "name": player.get("name"),
+                "playerType": player.get("playerType"),
+                "relation": player.get("relation"),
+            }
+            for player in players
+        ],
+        "canSendMessage": diplomacy.get("canSendMessage", False),
+        "canDeclareDiplomacy": diplomacy.get("canDeclareDiplomacy", False),
+    }
+
+    if latest_unread:
+        compact_diplomacy["latestUnreadMessage"] = {
+            "id": latest_unread.get("id"),
+            "fromPlayerId": latest_unread.get("fromPlayerId"),
+            "fromPlayerName": latest_unread.get("fromPlayerName"),
+            "subject": latest_unread.get("subject"),
+            "body": latest_unread.get("body"),
+            "sentAtTick": latest_unread.get("sentAtTick"),
+        }
+
     return {
         "currentTick": actions.get("currentTick"),
         "resources": actions.get("resources"),
@@ -32,16 +60,48 @@ def compact_possible_actions(actions: dict) -> dict:
             {"troopType": option["troopType"], "count": option["count"]}
             for option in actions.get("train", [])
         ],
-        "attacks": [
+        "targets": [
             {
-                "targetCityId": attack["targetCityId"],
-                "targetName": attack["targetName"],
-                "targetX": attack["targetX"],
-                "targetY": attack["targetY"],
-                "troops": attack.get("troops", []),
+                "targetCityId": target["targetCityId"],
+                "targetPlayerId": target["targetPlayerId"],
+                "targetName": target["targetName"],
+                "distance": target["distance"],
+                "travelTicks": target["travelTicks"],
+                "canAttack": target.get("canAttack", False),
+                "canScout": target.get("canScout", False),
             }
-            for attack in actions.get("attacks", [])
+            for target in actions.get("targets", [])
         ],
+        "diplomacy": compact_diplomacy,
+    }
+
+
+def compact_diplomacy_overview(overview: dict) -> dict:
+    """Trim diplomacy overview for the LLM prompt."""
+    latest = overview.get("latestUnreadMessage")
+    compact_message = None
+    if isinstance(latest, dict):
+        compact_message = {
+            "id": latest.get("id"),
+            "fromPlayerId": latest.get("fromPlayerId"),
+            "fromPlayerName": latest.get("fromPlayerName"),
+            "subject": latest.get("subject"),
+            "body": latest.get("body"),
+            "sentAtTick": latest.get("sentAtTick"),
+        }
+
+    return {
+        "cooldowns": overview.get("cooldowns"),
+        "relations": [
+            {
+                "playerId": relation.get("playerId"),
+                "name": relation.get("name"),
+                "playerType": relation.get("playerType"),
+                "relation": relation.get("relation"),
+            }
+            for relation in overview.get("relations", [])
+        ],
+        "latestUnreadMessage": compact_message,
     }
 
 

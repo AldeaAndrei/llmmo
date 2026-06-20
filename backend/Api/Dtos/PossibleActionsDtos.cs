@@ -11,12 +11,20 @@ public record PossibleTrainDto(
     int Count,
     BuildingUpgradeCostDto Cost);
 
-public record PossibleAttackDto(
+public record PossibleTargetDto(
     Guid TargetCityId,
+    Guid TargetPlayerId,
     string TargetName,
-    int TargetX,
-    int TargetY,
-    IReadOnlyList<TroopStackEntryDto> Troops);
+    int Distance,
+    int TravelTicks,
+    bool CanAttack,
+    bool CanScout);
+
+public record PossibleDiplomacyActionsDto(
+    IReadOnlyList<DiplomacyOverviewRelationDto> Players,
+    bool CanSendMessage,
+    bool CanDeclareDiplomacy,
+    DiplomacyOverviewMessageDto? LatestUnreadMessage);
 
 public record PossibleActionsDto(
     int CurrentTick,
@@ -27,4 +35,5 @@ public record PossibleActionsDto(
     IReadOnlyList<TroopStackEntryDto> Troops,
     IReadOnlyList<PossibleUpgradeDto> Upgrades,
     IReadOnlyList<PossibleTrainDto> Train,
-    IReadOnlyList<PossibleAttackDto> Attacks);
+    IReadOnlyList<PossibleTargetDto> Targets,
+    PossibleDiplomacyActionsDto Diplomacy);

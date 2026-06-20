@@ -1,4 +1,5 @@
 import { useTroopMovements } from '@/hooks/useTroopMovements'
+import { useTickTime } from '@/hooks/useTickTime'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 
@@ -30,12 +31,7 @@ function formatPhaseLabel(phase) {
   return 'outbound'
 }
 
-function formatTiming(remainingTicks) {
-  const ticks = Math.max(0, remainingTicks ?? 0)
-  return `${ticks} tick${ticks === 1 ? '' : 's'} remaining`
-}
-
-function MovementItem({ movement, variant }) {
+function MovementItem({ movement, variant, formatRemainingLabel }) {
   const typeLabel = formatTypeLabel(movement.type)
   const troopsText = formatTroops(movement.troops)
   const endpoint =
@@ -56,7 +52,7 @@ function MovementItem({ movement, variant }) {
         </span>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        {formatTiming(movement.remainingTicks)}
+        {formatRemainingLabel(movement.remainingTicks)}
       </p>
       {troopsText && (
         <p className="mt-1 text-xs text-muted-foreground">{troopsText}</p>
@@ -65,7 +61,14 @@ function MovementItem({ movement, variant }) {
   )
 }
 
-function MovementSection({ title, variant, items, emptyText, showEmpty }) {
+function MovementSection({
+  title,
+  variant,
+  items,
+  emptyText,
+  showEmpty,
+  formatRemainingLabel,
+}) {
   if (!showEmpty && items.length === 0) {
     return null
   }
@@ -84,6 +87,7 @@ function MovementSection({ title, variant, items, emptyText, showEmpty }) {
               key={movement.id}
               movement={movement}
               variant={variant}
+              formatRemainingLabel={formatRemainingLabel}
             />
           ))}
         </ul>
@@ -100,6 +104,7 @@ function TroopMovementsList({ cityId, title = 'Troop movements', ownedOnly = fal
     (cityId && cities.some((city) => city.id === cityId && city.playerId === playerId))
 
   const { movements, loading, hasLoaded } = useTroopMovements(isOwned ? cityId : null)
+  const { formatRemainingLabel } = useTickTime()
 
   if (!isAuthenticated) {
     return (
@@ -130,6 +135,7 @@ function TroopMovementsList({ cityId, title = 'Troop movements', ownedOnly = fal
             items={movements.outgoing}
             emptyText="No outgoing attacks or scouts."
             showEmpty
+            formatRemainingLabel={formatRemainingLabel}
           />
           <MovementSection
             title="To you"
@@ -137,6 +143,7 @@ function TroopMovementsList({ cityId, title = 'Troop movements', ownedOnly = fal
             items={movements.incoming}
             emptyText="No incoming attacks or scouts."
             showEmpty
+            formatRemainingLabel={formatRemainingLabel}
           />
         </>
       )}

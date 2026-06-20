@@ -8,15 +8,24 @@ namespace llmmo.Api;
 
 public class PossibleActionsService
 {
-    private const int MaxAttackTargets = 12;
-
     private readonly AppDbContext _db;
     private readonly AttackSubmissionService _attacks;
+    private readonly DiplomacyService _diplomacy;
 
-    public PossibleActionsService(AppDbContext db, AttackSubmissionService attacks)
+    private static readonly IReadOnlyList<TroopStackEntryDto> AttackTroops =
+        [new("soldier", 1)];
+
+    private static readonly IReadOnlyList<TroopStackEntryDto> ScoutTroops =
+        [new("spy", 1)];
+
+    public PossibleActionsService(
+        AppDbContext db,
+        AttackSubmissionService attacks,
+        DiplomacyService diplomacy)
     {
         _db = db;
         _attacks = attacks;
+        _diplomacy = diplomacy;
     }
 
     public async Task<(PossibleActionsDto? Result, string? Error)> GetForCityAsync(
@@ -61,7 +70,8 @@ public class PossibleActionsService
 
         var upgrades = PossibleActionsCalculator.GetAffordableUpgrades(city, upgradeSlotAvailable);
         var train = PossibleActionsCalculator.GetAffordableTrain(city, trainSlotAvailable);
-        var attacks = await GetPossibleAttacksAsync(playerId, city, cancellationToken);
+        var targets = await GetPossibleTargetsAsync(playerId, city, cancellationToken);
+        var diplomacy = await _diplomacy.BuildPossibleDiplomacyAsync(playerId, cancellationToken);
 
         return (new PossibleActionsDto(
             worldState.CurrentTick,
@@ -72,10 +82,11 @@ public class PossibleActionsService
             PossibleActionsCalculator.GetTroopCounts(city),
             upgrades,
             train,
-            attacks), null);
+            targets,
+            diplomacy), null);
     }
 
-    private async Task<IReadOnlyList<PossibleAttackDto>> GetPossibleAttacksAsync(
+    private async Task<IReadOnlyList<PossibleTargetDto>> GetPossibleTargetsAsync(
         Guid playerId,
         City sourceCity,
         CancellationToken cancellationToken)
@@ -84,46 +95,70 @@ public class PossibleActionsService
             .FirstOrDefault(troop => troop.Type.Equals("soldier", StringComparison.OrdinalIgnoreCase))
             ?.Quantity ?? 0;
 
-        if (soldierCount < 1)
-        {
-            return [];
-        }
+        var spyCount = sourceCity.Troops
+            .FirstOrDefault(troop => troop.Type.Equals("spy", StringComparison.OrdinalIgnoreCase))
+            ?.Quantity ?? 0;
 
-        var targets = await _db.Cities.AsNoTracking()
-            .Where(city => city.PlayerId != playerId)
-            .OrderBy(city => Math.Abs(city.X - sourceCity.X) + Math.Abs(city.Y - sourceCity.Y))
-            .Take(MaxAttackTargets)
+        var enemyCities = await _db.Cities.AsNoTracking()
+            .Include(target => target.Player)
+            .Where(target => target.PlayerId != playerId)
+            .OrderBy(target => Math.Abs(target.X - sourceCity.X) + Math.Abs(target.Y - sourceCity.Y))
             .ToListAsync(cancellationToken);
 
-        var attacks = new List<PossibleAttackDto>();
-        var troops = new List<TroopStackEntryDto> { new("soldier", 1) };
+        var targets = new List<PossibleTargetDto>();
+        var attackTroopEntries = new List<TroopStackEntry> { new("soldier", 1) };
+        var scoutTroopEntries = new List<TroopStackEntry> { new("spy", 1) };
+        var soldierSpeed = TroopStackHelper.PartySpeed(attackTroopEntries);
 
-        foreach (var target in targets)
+        foreach (var target in enemyCities)
         {
-            var preview = await _attacks.PreviewAsync(
-                playerId,
-                new CreateAttackRequest(
-                    sourceCity.Id,
-                    target.Id,
-                    null,
-                    null,
-                    "attack",
-                    troops),
-                cancellationToken);
+            var distance = MapDistance.Manhattan(sourceCity.X, sourceCity.Y, target.X, target.Y);
+            var travelTicks = MapDistance.TravelTicks(distance, soldierSpeed);
 
-            if (!preview.Valid)
+            var canAttack = false;
+            if (soldierCount >= 1)
             {
-                continue;
+                var attackPreview = await _attacks.PreviewAsync(
+                    playerId,
+                    new CreateAttackRequest(
+                        sourceCity.Id,
+                        target.Id,
+                        null,
+                        null,
+                        "attack",
+                        AttackTroops),
+                    cancellationToken);
+
+                canAttack = attackPreview.Valid;
             }
 
-            attacks.Add(new PossibleAttackDto(
+            var canScout = false;
+            if (spyCount >= 1)
+            {
+                var scoutPreview = await _attacks.PreviewAsync(
+                    playerId,
+                    new CreateAttackRequest(
+                        sourceCity.Id,
+                        target.Id,
+                        target.X,
+                        target.Y,
+                        "scout",
+                        ScoutTroops),
+                    cancellationToken);
+
+                canScout = scoutPreview.Valid;
+            }
+
+            targets.Add(new PossibleTargetDto(
                 target.Id,
-                target.Name,
-                target.X,
-                target.Y,
-                troops));
+                target.PlayerId,
+                target.Player.Name,
+                distance,
+                travelTicks,
+                canAttack,
+                canScout));
         }
 
-        return attacks;
+        return targets;
     }
 }

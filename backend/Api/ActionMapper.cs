@@ -28,6 +28,23 @@ public static class ActionMapper
         action.ReadyAtTick,
         action.DurationTicks);
 
+    public static LlmFeedItemDto ToLlmUnifiedFeedDto(GameAction action) => new(
+        "action",
+        action.Id,
+        action.Type,
+        StatusToString(action.Status),
+        action.SubmittedAtTick,
+        action.ReadyAtTick,
+        action.DurationTicks,
+        action.CreatedAt,
+        action.PlayerId,
+        action.Player.Name,
+        action.CityId,
+        action.City.Name,
+        action.City.X,
+        action.City.Y,
+        JsonSerializer.Deserialize<JsonElement>(action.Payload));
+
     public static LlmActionFeedItemDto ToLlmFeedDto(GameAction action) => new(
         action.Id,
         action.Type,

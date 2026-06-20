@@ -3,8 +3,9 @@ import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { useWorld } from '@/context/WorldContext'
 import { useCityActions } from '@/hooks/useCityActions'
+import { useTickTime } from '@/hooks/useTickTime'
 
-function slotSummary(actions, type, currentTick) {
+function slotSummary(actions, type, currentTick, formatRemainingTicks) {
   const active = actions.find(
     (action) => action.status === 'in_progress' && action.type === type,
   )
@@ -15,21 +16,23 @@ function slotSummary(actions, type, currentTick) {
 
   if (active.readyAtTick != null) {
     const remaining = Math.max(0, active.readyAtTick - currentTick)
-    return `${remaining} tick${remaining === 1 ? '' : 's'} left`
+    if (remaining === 0) {
+      return 'Ready'
+    }
+
+    return `${formatRemainingTicks(remaining)} left`
   }
 
   return 'Active'
 }
 
-function TickLine({ currentTick, secondsUntilNextTick }) {
+function TickLine({ secondsUntilNextTick, formatDuration }) {
   const countdown =
-    secondsUntilNextTick != null ? `${secondsUntilNextTick}s` : '…'
+    secondsUntilNextTick != null
+      ? formatDuration(secondsUntilNextTick)
+      : '…'
 
-  return (
-    <span>
-      Tick {currentTick} · next in {countdown}
-    </span>
-  )
+  return <span>Next update in {countdown}</span>
 }
 
 function formatTickDelta(delta) {
@@ -62,6 +65,7 @@ function StatusBar() {
   const { isAuthenticated } = useAuth()
   const { primaryCity, loading } = useGameData()
   const { currentTick, secondsUntilNextTick, loading: worldLoading } = useWorld()
+  const { formatDuration, formatRemainingTicks } = useTickTime()
   const { actions } = useCityActions(isAuthenticated ? primaryCity?.id : null)
 
   if (worldLoading && currentTick === 0) {
@@ -76,8 +80,8 @@ function StatusBar() {
     return (
       <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2 text-sm text-muted-foreground">
         <TickLine
-          currentTick={currentTick}
           secondsUntilNextTick={secondsUntilNextTick}
+          formatDuration={formatDuration}
         />
         <Separator orientation="vertical" className="hidden h-4 sm:block" />
         <span>Log in to play</span>
@@ -97,8 +101,8 @@ function StatusBar() {
     return (
       <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2 text-sm text-muted-foreground">
         <TickLine
-          currentTick={currentTick}
           secondsUntilNextTick={secondsUntilNextTick}
+          formatDuration={formatDuration}
         />
         <Separator orientation="vertical" className="hidden h-4 sm:block" />
         <span>No city found</span>
@@ -125,13 +129,18 @@ function StatusBar() {
         <span>{primaryCity.name}</span>
         <Separator orientation="vertical" className="hidden h-4 sm:block" />
         <TickLine
-          currentTick={currentTick}
           secondsUntilNextTick={secondsUntilNextTick}
+          formatDuration={formatDuration}
         />
         <Separator orientation="vertical" className="hidden h-4 sm:block" />
-        <span>Upgrade: {slotSummary(actions, 'upgrade', currentTick)}</span>
+        <span>
+          Upgrade:{' '}
+          {slotSummary(actions, 'upgrade', currentTick, formatRemainingTicks)}
+        </span>
         <Separator orientation="vertical" className="hidden h-4 sm:block" />
-        <span>Train: {slotSummary(actions, 'train', currentTick)}</span>
+        <span>
+          Train: {slotSummary(actions, 'train', currentTick, formatRemainingTicks)}
+        </span>
       </div>
       {troopLine && <div>{troopLine}</div>}
     </div>

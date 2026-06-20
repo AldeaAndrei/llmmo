@@ -24,19 +24,27 @@ Schema:
   "commands": [
     {{ "type": "upgrade", "buildingType": "<building>", "reason": "<1-2 sentences>" }},
     {{ "type": "train", "troopType": "soldier"|"spy", "count": 1, "reason": "<1-2 sentences>" }},
-    {{ "type": "attack", "targetCityId": "<uuid>", "troopType": "soldier", "count": 1, "reason": "<1-2 sentences>" }}
+    {{ "type": "attack", "targetCityId": "<uuid>", "troopType": "soldier", "count": 1, "reason": "<1-2 sentences>" }},
+    {{ "type": "attack", "targetCityId": "<uuid>", "troopType": "spy", "count": 1, "reason": "<1-2 sentences>" }},
+    {{ "type": "message", "toPlayerId": "<uuid>", "subject": "<text>", "body": "<text>", "reason": "<1-2 sentences>" }},
+    {{ "type": "ally", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }},
+    {{ "type": "enemy", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }},
+    {{ "type": "clear_relation", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }}
   ]
 }}
 
 Planning rules (follow strictly):
 1. You may ONLY choose commands that appear in the Possible actions section below.
-2. For upgrade, use a buildingType from possibleActions.upgrades.
-3. For train, use troopType/count exactly as listed in possibleActions.train (always count 1).
-4. For attack, copy targetCityId and troops from one entry in possibleActions.attacks.
-5. Prefer 1–2 commands per plan. If upgrades, train, and attacks are all empty arrays, return `"commands": []`.
-6. In upgrade reasons, name fromLevel→toLevel from the matching upgrade entry.
-7. Do not repeat the same action as your last two decisions unless still clearly optimal.
-8. Each reason must be specific to this tick (no copy-paste).
+2. For upgrade, use a buildingType from upgrades.
+3. For train, use troopType/count exactly as listed in train (always count 1).
+4. For attack, use targetCityId from targets where canAttack is true (soldier) or canScout is true (spy).
+5. Diplomacy commands use toPlayerId from diplomacy.players.
+6. Only send a message when diplomacy.canSendMessage is true.
+7. Only declare ally/enemy/clear_relation when diplomacy.canDeclareDiplomacy is true.
+8. Prefer 1–2 commands per plan. If no valid actions exist, return `"commands": []`.
+9. In upgrade reasons, name fromLevel→toLevel from the matching upgrade entry.
+10. Do not repeat the same action as your last two decisions unless still clearly optimal.
+11. Each reason must be specific to this tick (no copy-paste).
 """
 
 

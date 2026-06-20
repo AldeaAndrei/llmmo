@@ -2,6 +2,7 @@ import { AuthProvider } from '@/context/AuthContext'
 import { GameDataProvider } from '@/context/GameDataContext'
 import { GameUIProvider } from '@/context/GameUIContext'
 import { ReportsProvider } from '@/context/ReportsContext'
+import { SocialProvider } from '@/context/SocialContext'
 import { WorldProvider } from '@/context/WorldContext'
 import AuthGate from '@/components/auth/AuthGate'
 import GameBootstrap from '@/components/GameBootstrap'
@@ -28,10 +29,12 @@ function App() {
         <GameUIProvider>
           <GameDataProvider>
             <ReportsProvider>
-              <AuthGate>
-                <GameBootstrap />
-                <AppShell />
-              </AuthGate>
+              <SocialProvider>
+                <AuthGate>
+                  <GameBootstrap />
+                  <AppShell />
+                </AuthGate>
+              </SocialProvider>
             </ReportsProvider>
           </GameDataProvider>
         </GameUIProvider>

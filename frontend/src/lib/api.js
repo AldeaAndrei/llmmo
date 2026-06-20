@@ -120,4 +120,26 @@ export const api = {
 
   markReportRead: (reportId) =>
     request(`/reports/${reportId}/read`, { method: 'POST' }),
+
+  getDiplomacyPlayers: () => request('/diplomacy/players'),
+
+  getDiplomacyMessages: () => request('/diplomacy/messages'),
+
+  sendDiplomacyMessage: (body) =>
+    request('/diplomacy/messages', { method: 'POST', body: JSON.stringify(body) }),
+
+  markDiplomacyMessageRead: (messageId) =>
+    request(`/diplomacy/messages/${messageId}/read`, { method: 'POST' }),
+
+  getDiplomacyRelations: () => request('/diplomacy/relations'),
+
+  setDiplomacyRelation: (body) =>
+    request('/diplomacy/relations', { method: 'PUT', body: JSON.stringify(body) }),
+
+  clearDiplomacyRelation: (toPlayerId) =>
+    request(`/diplomacy/relations/${toPlayerId}`, { method: 'DELETE' }),
+
+  getDiplomacyOverview: () => request('/diplomacy/overview'),
+
+  getDiplomacyCooldowns: () => request('/diplomacy/cooldowns'),
 }

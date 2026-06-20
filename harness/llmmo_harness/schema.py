@@ -19,7 +19,15 @@ BUILDING_TYPES = DEFAULT_BUILDING_TYPES
 
 TROOP_TYPES = frozenset({"soldier", "spy"})
 
-COMMAND_TYPES = frozenset({"upgrade", "train", "attack"})
+COMMAND_TYPES = frozenset({
+    "upgrade",
+    "train",
+    "attack",
+    "message",
+    "ally",
+    "enemy",
+    "clear_relation",
+})
 
 
 def set_building_types(types: set[str] | frozenset[str]) -> None:
@@ -83,8 +91,42 @@ class AttackCommand(BaseModel):
         return value
 
 
+class MessageCommand(BaseModel):
+    type: Literal["message"] = "message"
+    toPlayerId: str
+    subject: str = Field(min_length=1, max_length=100)
+    body: str = Field(min_length=1, max_length=500)
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class AllyCommand(BaseModel):
+    type: Literal["ally"] = "ally"
+    toPlayerId: str
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class EnemyCommand(BaseModel):
+    type: Literal["enemy"] = "enemy"
+    toPlayerId: str
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class ClearRelationCommand(BaseModel):
+    type: Literal["clear_relation"] = "clear_relation"
+    toPlayerId: str
+    reason: str = Field(min_length=1, max_length=500)
+
+
 Command = Annotated[
-    Union[UpgradeCommand, TrainCommand, AttackCommand],
+    Union[
+        UpgradeCommand,
+        TrainCommand,
+        AttackCommand,
+        MessageCommand,
+        AllyCommand,
+        EnemyCommand,
+        ClearRelationCommand,
+    ],
     Field(discriminator="type"),
 ]
 
@@ -92,7 +134,15 @@ Command = Annotated[
 class CommandPlan(BaseModel):
     schemaVersion: int = 1
     observedAtTick: int = 0
-    commands: list[UpgradeCommand | TrainCommand | AttackCommand] = Field(default_factory=list)
+    commands: list[
+        UpgradeCommand
+        | TrainCommand
+        | AttackCommand
+        | MessageCommand
+        | AllyCommand
+        | EnemyCommand
+        | ClearRelationCommand
+    ] = Field(default_factory=list)
 
     @field_validator("schemaVersion")
     @classmethod

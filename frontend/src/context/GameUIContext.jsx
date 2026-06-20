@@ -6,6 +6,7 @@ const DEFAULT_SELECTION = {
   map: { type: 'tile', id: tileId(50, 50) },
   city: { type: 'building', id: 'gold_mine' },
   reports: null,
+  social: null,
   'llm-activity': null,
 }
 

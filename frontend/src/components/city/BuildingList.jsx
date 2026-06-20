@@ -3,6 +3,7 @@ import BuildingImage from '@/components/buildings/BuildingImage'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { useGameUI } from '@/context/GameUIContext'
+import { useTickTime } from '@/hooks/useTickTime'
 
 const BUILDING_ORDER = [
   'gold_mine',
@@ -15,13 +16,13 @@ const BUILDING_ORDER = [
   'wall',
 ]
 
-function formatBuildingEffect(building) {
+function formatBuildingEffect(building, formatTicksAsDuration, formatPlayerEffectText) {
   if (building.currentEffect) {
-    return building.currentEffect
+    return formatPlayerEffectText(building.currentEffect)
   }
 
   if (building.productionPerTick && building.productionResource) {
-    return `+${building.productionPerTick} ${building.productionResource}/tick`
+    return `+${building.productionPerTick} ${building.productionResource} every ${formatTicksAsDuration(1)}`
   }
 
   return null
@@ -67,6 +68,7 @@ function BuildingList() {
   const { isAuthenticated } = useAuth()
   const { selection, setSelection } = useGameUI()
   const { primaryCity, loading } = useGameData()
+  const { formatTicksAsDuration, formatPlayerEffectText } = useTickTime()
 
   if (!isAuthenticated) {
     return (
@@ -121,7 +123,11 @@ function BuildingList() {
               selection?.type === 'building' && selection.id === building.type
             }
             onSelect={handleSelect}
-            production={formatBuildingEffect(building)}
+            production={formatBuildingEffect(
+              building,
+              formatTicksAsDuration,
+              formatPlayerEffectText,
+            )}
           />
         ))}
       </ul>

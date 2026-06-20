@@ -31,6 +31,12 @@ public class AppDbContext : DbContext
 
     public DbSet<Report> Reports => Set<Report>();
 
+    public DbSet<PlayerMessage> PlayerMessages => Set<PlayerMessage>();
+
+    public DbSet<PlayerRelation> PlayerRelations => Set<PlayerRelation>();
+
+    public DbSet<DiplomacyEvent> DiplomacyEvents => Set<DiplomacyEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var playerTypeConverter = new ValueConverter<PlayerType, string>(
@@ -64,6 +70,10 @@ public class AppDbContext : DbContext
             entity.Property(player => player.UpdatedAt)
                 .HasColumnName("updated_at")
                 .IsRequired();
+            entity.Property(player => player.LastMessageSentAtTick)
+                .HasColumnName("last_message_sent_at_tick");
+            entity.Property(player => player.LastDiplomacyDeclaredAtTick)
+                .HasColumnName("last_diplomacy_declared_at_tick");
 
             entity.HasOne(player => player.OwnerUser)
                 .WithMany(user => user.Players)
@@ -423,6 +433,116 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+        var diplomacyRelationConverter = new ValueConverter<DiplomacyRelationType, string>(
+            value => value == DiplomacyRelationType.Ally ? "ally" : "enemy",
+            value => value == "ally" ? DiplomacyRelationType.Ally : DiplomacyRelationType.Enemy);
+
+        modelBuilder.Entity<PlayerMessage>(entity =>
+        {
+            entity.ToTable("player_messages");
+
+            entity.HasKey(message => message.Id);
+
+            entity.Property(message => message.Id).HasColumnName("id");
+            entity.Property(message => message.FromPlayerId).HasColumnName("from_player_id");
+            entity.Property(message => message.ToPlayerId).HasColumnName("to_player_id");
+            entity.Property(message => message.Subject)
+                .HasColumnName("subject")
+                .HasMaxLength(100)
+                .IsRequired();
+            entity.Property(message => message.Body)
+                .HasColumnName("body")
+                .HasMaxLength(500)
+                .IsRequired();
+            entity.Property(message => message.SentAt)
+                .HasColumnName("sent_at")
+                .IsRequired();
+            entity.Property(message => message.SentAtTick)
+                .HasColumnName("sent_at_tick")
+                .IsRequired();
+            entity.Property(message => message.ReadAt)
+                .HasColumnName("read_at");
+
+            entity.HasIndex(message => new { message.ToPlayerId, message.SentAt });
+            entity.HasIndex(message => new { message.FromPlayerId, message.SentAt });
+
+            entity.HasOne(message => message.FromPlayer)
+                .WithMany()
+                .HasForeignKey(message => message.FromPlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(message => message.ToPlayer)
+                .WithMany()
+                .HasForeignKey(message => message.ToPlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PlayerRelation>(entity =>
+        {
+            entity.ToTable("player_relations");
+
+            entity.HasKey(relation => new { relation.FromPlayerId, relation.ToPlayerId });
+
+            entity.Property(relation => relation.FromPlayerId).HasColumnName("from_player_id");
+            entity.Property(relation => relation.ToPlayerId).HasColumnName("to_player_id");
+            entity.Property(relation => relation.Relation)
+                .HasColumnName("relation")
+                .HasMaxLength(16)
+                .HasConversion(diplomacyRelationConverter)
+                .IsRequired();
+            entity.Property(relation => relation.UpdatedAt)
+                .HasColumnName("updated_at")
+                .IsRequired();
+            entity.Property(relation => relation.UpdatedAtTick)
+                .HasColumnName("updated_at_tick")
+                .IsRequired();
+
+            entity.HasOne(relation => relation.FromPlayer)
+                .WithMany()
+                .HasForeignKey(relation => relation.FromPlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(relation => relation.ToPlayer)
+                .WithMany()
+                .HasForeignKey(relation => relation.ToPlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DiplomacyEvent>(entity =>
+        {
+            entity.ToTable("diplomacy_events");
+
+            entity.HasKey(diplomacyEvent => diplomacyEvent.Id);
+
+            entity.Property(diplomacyEvent => diplomacyEvent.Id).HasColumnName("id");
+            entity.Property(diplomacyEvent => diplomacyEvent.DeclaredByPlayerId)
+                .HasColumnName("declared_by_player_id");
+            entity.Property(diplomacyEvent => diplomacyEvent.TargetPlayerId)
+                .HasColumnName("target_player_id");
+            entity.Property(diplomacyEvent => diplomacyEvent.EventType)
+                .HasColumnName("event_type")
+                .HasMaxLength(32)
+                .IsRequired();
+            entity.Property(diplomacyEvent => diplomacyEvent.CreatedAt)
+                .HasColumnName("created_at")
+                .IsRequired();
+            entity.Property(diplomacyEvent => diplomacyEvent.CreatedAtTick)
+                .HasColumnName("created_at_tick")
+                .IsRequired();
+
+            entity.HasIndex(diplomacyEvent => diplomacyEvent.CreatedAt);
+
+            entity.HasOne(diplomacyEvent => diplomacyEvent.DeclaredByPlayer)
+                .WithMany()
+                .HasForeignKey(diplomacyEvent => diplomacyEvent.DeclaredByPlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(diplomacyEvent => diplomacyEvent.TargetPlayer)
+                .WithMany()
+                .HasForeignKey(diplomacyEvent => diplomacyEvent.TargetPlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<WorldState>(entity =>
         {
             entity.ToTable("world_state");
@@ -582,6 +702,30 @@ public class AppDbContext : DbContext
         }
 
         foreach (var entry in ChangeTracker.Entries<Report>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<PlayerMessage>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.SentAt = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<PlayerRelation>())
+        {
+            if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<DiplomacyEvent>())
         {
             if (entry.State == EntityState.Added)
             {

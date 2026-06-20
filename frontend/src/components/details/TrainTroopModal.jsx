@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { api } from '@/lib/api'
+import { useTickTime } from '@/hooks/useTickTime'
 
 const RESOURCE_KEYS = ['wood', 'stone', 'gold', 'food']
 
@@ -49,6 +50,7 @@ function TroopTrainCard({
   selected,
   onSelect,
   onCountChange,
+  formatTicksAsDuration,
 }) {
   const unitCost = troop.trainCostPerUnit
   const carry =
@@ -82,7 +84,7 @@ function TroopTrainCard({
           <>
             {' '}
             · <span className="text-foreground">Train time: </span>
-            {duration} tick{duration === 1 ? '' : 's'}
+            {formatTicksAsDuration(duration)}
           </>
         )}
       </p>
@@ -131,6 +133,7 @@ function TrainTroopModal({
   const [sessionResources, setSessionResources] = useState(null)
   const [preview, setPreview] = useState(null)
   const [cityId, setCityId] = useState(null)
+  const { formatTicksAsDuration } = useTickTime()
 
   const trainable = useMemo(
     () => catalog.filter((t) => t.trainAtBuilding === 'barracks'),
@@ -272,6 +275,7 @@ function TrainTroopModal({
                 selected={selectedType === troop.type && countNum > 0}
                 onSelect={setSelectedType}
                 onCountChange={handleCountChange}
+                formatTicksAsDuration={formatTicksAsDuration}
               />
             )
           })}
@@ -301,8 +305,9 @@ function TrainTroopModal({
               </p>
               <p>
                 <span className="text-muted-foreground">Total train time: </span>
-                {preview?.totalDurationTicks ?? '—'} tick
-                {preview?.totalDurationTicks === 1 ? '' : 's'}
+                {preview?.totalDurationTicks != null
+                  ? formatTicksAsDuration(preview.totalDurationTicks)
+                  : '—'}
               </p>
             </div>
           )}

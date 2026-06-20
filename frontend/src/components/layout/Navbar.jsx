@@ -17,6 +17,9 @@ function Navbar() {
           <TabsTrigger value="city">City</TabsTrigger>
           <TabsTrigger value="llm-activity">LLM Activity</TabsTrigger>
           {isAuthenticated && (
+            <TabsTrigger value="social">Social</TabsTrigger>
+          )}
+          {isAuthenticated && (
             <TabsTrigger value="reports" className="relative">
               Reports
               {unreadCount > 0 && (

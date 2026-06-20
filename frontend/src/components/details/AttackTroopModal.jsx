@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { api } from '@/lib/api'
+import { useTickTime } from '@/hooks/useTickTime'
 
 function carryCapacity(troop) {
   return (
@@ -94,6 +95,7 @@ function AttackTroopModal({
   const [counts, setCounts] = useState({})
   const [preview, setPreview] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const { formatTicksAsDuration } = useTickTime()
 
   const isScout = mode === 'scout'
 
@@ -300,15 +302,13 @@ function AttackTroopModal({
               {preview.outboundTicks != null && (
                 <p>
                   <span className="text-muted-foreground">Outbound: </span>
-                  {preview.outboundTicks} tick
-                  {preview.outboundTicks === 1 ? '' : 's'}
+                  {formatTicksAsDuration(preview.outboundTicks)}
                 </p>
               )}
               {!isScout && preview.returnTicks != null && (
                 <p>
                   <span className="text-muted-foreground">Return: </span>
-                  {preview.returnTicks} tick
-                  {preview.returnTicks === 1 ? '' : 's'}
+                  {formatTicksAsDuration(preview.returnTicks)}
                 </p>
               )}
               {totalTravelTicks != null && (
@@ -316,7 +316,7 @@ function AttackTroopModal({
                   <span className="text-muted-foreground font-normal">
                     Total {isScout ? 'travel' : 'attack'} time:{' '}
                   </span>
-                  {totalTravelTicks} tick{totalTravelTicks === 1 ? '' : 's'}
+                  {formatTicksAsDuration(totalTravelTicks)}
                 </p>
               )}
             </div>

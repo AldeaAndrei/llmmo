@@ -42,6 +42,7 @@ builder.Services.AddScoped<ActionSubmissionService>();
 builder.Services.AddScoped<AttackSubmissionService>();
 builder.Services.AddScoped<PossibleActionsService>();
 builder.Services.AddScoped<IntelService>();
+builder.Services.AddScoped<DiplomacyService>();
 builder.Services.AddScoped<ActionCompleter>();
 builder.Services.AddScoped<CombatResolver>();
 builder.Services.AddScoped<AttackMovementService>();

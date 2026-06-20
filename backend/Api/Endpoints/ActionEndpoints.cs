@@ -49,6 +49,7 @@ public static class ActionEndpoints
         bool? include_done,
         int? limit,
         AppDbContext db,
+        DiplomacyService diplomacy,
         CancellationToken cancellationToken)
     {
         var take = Math.Clamp(limit ?? 50, 1, 100);
@@ -70,7 +71,17 @@ public static class ActionEndpoints
             .Take(take)
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(actions.Select(ActionMapper.ToLlmFeedDto));
+        var diplomacyFeed = await diplomacy.ListLlmDiplomacyFeedAsync(take, cancellationToken);
+
+        var merged = actions
+            .Select(ActionMapper.ToLlmUnifiedFeedDto)
+            .Concat(diplomacyFeed)
+            .OrderByDescending(item => item.SubmittedAtTick)
+            .ThenByDescending(item => item.CreatedAt)
+            .Take(take)
+            .ToList();
+
+        return Results.Ok(merged);
     }
 
     private static async Task<IResult> ListActions(

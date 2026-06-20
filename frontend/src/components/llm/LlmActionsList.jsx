@@ -3,11 +3,13 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import LlmActionCard from '@/components/llm/LlmActionCard'
 import { useLlmActions } from '@/hooks/useLlmActions'
+import { useTickTime } from '@/hooks/useTickTime'
 import { useWorld } from '@/context/WorldContext'
 
 function LlmActionsList({ showHeader = true, defaultIncludeDone = false }) {
   const [includeDone, setIncludeDone] = useState(defaultIncludeDone)
   const { currentTick } = useWorld()
+  const { formatRemainingLabel, formatTicksAsDuration } = useTickTime()
   const { actions, loading, hasLoaded } = useLlmActions({ includeDone })
 
   return (
@@ -52,6 +54,8 @@ function LlmActionsList({ showHeader = true, defaultIncludeDone = false }) {
               key={action.id}
               action={action}
               currentTick={currentTick}
+              formatRemainingLabel={formatRemainingLabel}
+              formatTicksAsDuration={formatTicksAsDuration}
             />
           ))}
         </ul>

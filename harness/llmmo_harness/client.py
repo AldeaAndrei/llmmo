@@ -110,3 +110,70 @@ class GameClient:
             error_body = response.text
             message = response.text
         raise GameApiError(response.status_code, message, error_body)
+
+    def get_diplomacy_overview(self) -> dict:
+        response = self._request("GET", "/diplomacy/overview")
+        if response.status_code != 200:
+            error_body: dict | str
+            try:
+                error_body = response.json()
+                message = error_body.get("error", response.text)
+            except Exception:
+                error_body = response.text
+                message = response.text
+            raise GameApiError(response.status_code, message, error_body)
+        return response.json()
+
+    def get_diplomacy_players(self) -> list[dict]:
+        response = self._request("GET", "/diplomacy/players")
+        if response.status_code != 200:
+            raise GameApiError(response.status_code, response.text)
+        return response.json()
+
+    def send_message(self, to_player_id: str, subject: str, body: str) -> dict:
+        payload = {
+            "toPlayerId": to_player_id,
+            "subject": subject,
+            "body": body,
+        }
+        response = self._request("POST", "/diplomacy/messages", json_body=payload)
+        if response.status_code == 201:
+            return response.json()
+        error_body: dict | str
+        try:
+            error_body = response.json()
+            message = error_body.get("error", response.text)
+        except Exception:
+            error_body = response.text
+            message = response.text
+        raise GameApiError(response.status_code, message, error_body)
+
+    def set_relation(self, to_player_id: str, relation: str) -> dict:
+        payload = {
+            "toPlayerId": to_player_id,
+            "relation": relation,
+        }
+        response = self._request("PUT", "/diplomacy/relations", json_body=payload)
+        if response.status_code == 200:
+            return response.json()
+        error_body: dict | str
+        try:
+            error_body = response.json()
+            message = error_body.get("error", response.text)
+        except Exception:
+            error_body = response.text
+            message = response.text
+        raise GameApiError(response.status_code, message, error_body)
+
+    def clear_relation(self, to_player_id: str) -> None:
+        response = self._request("DELETE", f"/diplomacy/relations/{to_player_id}")
+        if response.status_code == 204:
+            return
+        error_body: dict | str
+        try:
+            error_body = response.json()
+            message = error_body.get("error", response.text)
+        except Exception:
+            error_body = response.text
+            message = response.text
+        raise GameApiError(response.status_code, message, error_body)

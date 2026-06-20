@@ -419,6 +419,123 @@ namespace llmmo.Migrations
                     b.ToTable("attacks", (string)null);
                 });
 
+            modelBuilder.Entity("llmmo.Entities.DiplomacyEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("CreatedAtTick")
+                        .HasColumnType("integer")
+                        .HasColumnName("created_at_tick");
+
+                    b.Property<Guid>("DeclaredByPlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("declared_by_player_id");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("event_type");
+
+                    b.Property<Guid>("TargetPlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_player_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("DeclaredByPlayerId");
+
+                    b.HasIndex("TargetPlayerId");
+
+                    b.ToTable("diplomacy_events", (string)null);
+                });
+
+            modelBuilder.Entity("llmmo.Entities.PlayerMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("body");
+
+                    b.Property<Guid>("FromPlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_player_id");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<int>("SentAtTick")
+                        .HasColumnType("integer")
+                        .HasColumnName("sent_at_tick");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("subject");
+
+                    b.Property<Guid>("ToPlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_player_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromPlayerId", "SentAt");
+
+                    b.HasIndex("ToPlayerId", "SentAt");
+
+                    b.ToTable("player_messages", (string)null);
+                });
+
+            modelBuilder.Entity("llmmo.Entities.PlayerRelation", b =>
+                {
+                    b.Property<Guid>("FromPlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_player_id");
+
+                    b.Property<Guid>("ToPlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_player_id");
+
+                    b.Property<string>("Relation")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("relation");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("UpdatedAtTick")
+                        .HasColumnType("integer")
+                        .HasColumnName("updated_at_tick");
+
+                    b.HasKey("FromPlayerId", "ToPlayerId");
+
+                    b.ToTable("player_relations", (string)null);
+                });
+
             modelBuilder.Entity("llmmo.Entities.Player", b =>
                 {
                     b.Property<Guid>("Id")
@@ -429,6 +546,14 @@ namespace llmmo.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<int?>("LastDiplomacyDeclaredAtTick")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_diplomacy_declared_at_tick");
+
+                    b.Property<int?>("LastMessageSentAtTick")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_message_sent_at_tick");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -688,6 +813,63 @@ namespace llmmo.Migrations
                     b.Navigation("SourceCity");
 
                     b.Navigation("TargetCity");
+                });
+
+            modelBuilder.Entity("llmmo.Entities.DiplomacyEvent", b =>
+                {
+                    b.HasOne("llmmo.Entities.Player", "DeclaredByPlayer")
+                        .WithMany()
+                        .HasForeignKey("DeclaredByPlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("llmmo.Entities.Player", "TargetPlayer")
+                        .WithMany()
+                        .HasForeignKey("TargetPlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DeclaredByPlayer");
+
+                    b.Navigation("TargetPlayer");
+                });
+
+            modelBuilder.Entity("llmmo.Entities.PlayerMessage", b =>
+                {
+                    b.HasOne("llmmo.Entities.Player", "FromPlayer")
+                        .WithMany()
+                        .HasForeignKey("FromPlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("llmmo.Entities.Player", "ToPlayer")
+                        .WithMany()
+                        .HasForeignKey("ToPlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FromPlayer");
+
+                    b.Navigation("ToPlayer");
+                });
+
+            modelBuilder.Entity("llmmo.Entities.PlayerRelation", b =>
+                {
+                    b.HasOne("llmmo.Entities.Player", "FromPlayer")
+                        .WithMany()
+                        .HasForeignKey("FromPlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("llmmo.Entities.Player", "ToPlayer")
+                        .WithMany()
+                        .HasForeignKey("ToPlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FromPlayer");
+
+                    b.Navigation("ToPlayer");
                 });
 
             modelBuilder.Entity("llmmo.Entities.Player", b =>

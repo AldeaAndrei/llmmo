@@ -9,21 +9,73 @@ function formatPayload(payload) {
     .join(', ')
 }
 
+function formatDiplomacyType(type) {
+  switch (type) {
+    case 'message':
+      return 'Message'
+    case 'ally':
+      return 'Alliance'
+    case 'enemy':
+      return 'Declare War'
+    case 'clear_relation':
+      return 'Clear Relation'
+    default:
+      return type
+  }
+}
+
+function formatDiplomacyDetail(action) {
+  const payload = action.payload
+  if (!payload || typeof payload !== 'object') {
+    return ''
+  }
+
+  if (action.type === 'message') {
+    const parts = []
+    if (payload.toPlayerName) {
+      parts.push(`To: ${payload.toPlayerName}`)
+    }
+    if (payload.subject) {
+      parts.push(`Subject: ${payload.subject}`)
+    }
+    if (payload.body) {
+      parts.push(payload.body)
+    }
+    return parts.join(' · ')
+  }
+
+  if (payload.targetPlayerName) {
+    return `Target: ${payload.targetPlayerName}`
+  }
+
+  return formatPayload(payload)
+}
+
 function statusLabel(status) {
+  if (!status) return ''
   return status.replaceAll('_', ' ')
 }
 
-function formatTiming(action, currentTick) {
+function formatTiming(
+  action,
+  currentTick,
+  formatRemainingLabel,
+  formatTicksAsDuration,
+) {
+  if (action.category === 'diplomacy') {
+    return action.createdAt ? formatTime(action.createdAt) : 'Queued'
+  }
+
   if (action.status === 'in_progress' && action.readyAtTick != null) {
     const remaining = Math.max(0, action.readyAtTick - currentTick)
-    return `${remaining} tick${remaining === 1 ? '' : 's'} remaining`
+    return formatRemainingLabel(remaining)
   }
 
-  if (action.status === 'in_progress') {
-    return `${action.durationTicks} tick${action.durationTicks === 1 ? '' : 's'} duration`
+  if (action.status === 'in_progress' && action.durationTicks != null) {
+    return `${formatTicksAsDuration(action.durationTicks)} duration`
   }
 
-  return `Submitted tick ${action.submittedAtTick}`
+  return 'Queued'
 }
 
 function formatTime(createdAt) {
@@ -43,31 +95,57 @@ function getReason(payload) {
   return typeof reason === 'string' && reason.trim() ? reason.trim() : null
 }
 
-function LlmActionCard({ action, currentTick }) {
-  const payloadText = formatPayload(action.payload)
-  const reason = getReason(action.payload)
+function LlmActionCard({
+  action,
+  currentTick,
+  formatRemainingLabel,
+  formatTicksAsDuration,
+}) {
+  const isDiplomacy = action.category === 'diplomacy'
+  const payloadText = isDiplomacy
+    ? formatDiplomacyDetail(action)
+    : formatPayload(action.payload)
+  const reason = isDiplomacy ? null : getReason(action.payload)
 
   return (
     <li className="rounded-md border bg-muted/30 px-3 py-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-medium capitalize">{action.type}</span>
-        <span className="text-xs capitalize text-muted-foreground">
-          {statusLabel(action.status)}
+        <span className="font-medium capitalize">
+          {isDiplomacy ? formatDiplomacyType(action.type) : action.type}
         </span>
+        {action.status && (
+          <span className="text-xs capitalize text-muted-foreground">
+            {statusLabel(action.status)}
+          </span>
+        )}
       </div>
 
       <p className="mt-1 text-xs text-muted-foreground">
-        {action.playerName} · {action.cityName} ({action.cityX},{' '}
-        {action.cityY})
+        {action.playerName}
+        {action.cityName != null ? (
+          <>
+            {' '}
+            · {action.cityName} ({action.cityX}, {action.cityY})
+          </>
+        ) : isDiplomacy ? (
+          ' · Diplomacy'
+        ) : null}
       </p>
 
       <p className="mt-1 text-xs text-muted-foreground">
-        {formatTiming(action, currentTick)}
+        {formatTiming(
+          action,
+          currentTick,
+          formatRemainingLabel,
+          formatTicksAsDuration,
+        )}
         {action.createdAt ? ` · ${formatTime(action.createdAt)}` : ''}
       </p>
 
       {payloadText && (
-        <p className="mt-1 text-xs text-muted-foreground">{payloadText}</p>
+        <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+          {payloadText}
+        </p>
       )}
 
       {reason && (

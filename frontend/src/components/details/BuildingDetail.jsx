@@ -6,6 +6,7 @@ import TrainTroopModal from '@/components/details/TrainTroopModal'
 import { useAuth } from '@/context/AuthContext'
 import { useGameData } from '@/context/GameDataContext'
 import { useCityActions } from '@/hooks/useCityActions'
+import { useTickTime } from '@/hooks/useTickTime'
 
 const RESOURCE_KEYS = ['wood', 'stone', 'gold', 'food']
 
@@ -34,6 +35,7 @@ function BuildingDetail({ selection }) {
   const { isAuthenticated } = useAuth()
   const { primaryCity, submitAction } = useGameData()
   const { actions } = useCityActions(primaryCity?.id)
+  const { formatTicksAsDuration, formatPlayerEffectText } = useTickTime()
   const [submitting, setSubmitting] = useState(false)
   const [trainOpen, setTrainOpen] = useState(false)
 
@@ -103,21 +105,20 @@ function BuildingDetail({ selection }) {
       {building.currentEffect && (
         <p className="text-sm">
           <span className="text-muted-foreground">Current effect: </span>
-          {building.currentEffect}
+          {formatPlayerEffectText(building.currentEffect)}
         </p>
       )}
 
       {building.nextLevelEffect && (
         <p className="text-sm">
           <span className="text-muted-foreground">Next level: </span>
-          {building.nextLevelEffect}
+          {formatPlayerEffectText(building.nextLevelEffect)}
         </p>
       )}
 
       {building.upgradeDurationTicks != null && (
         <p className="text-sm text-muted-foreground">
-          Upgrade time: {building.upgradeDurationTicks} tick
-          {building.upgradeDurationTicks === 1 ? '' : 's'}
+          Upgrade time: {formatTicksAsDuration(building.upgradeDurationTicks)}
         </p>
       )}
 

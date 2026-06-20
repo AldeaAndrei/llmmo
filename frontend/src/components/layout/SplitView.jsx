@@ -5,6 +5,7 @@ import BuildingList from '@/components/city/BuildingList'
 import ReportsList from '@/components/reports/ReportsList'
 import AgentsPanel from '@/components/agents/AgentsPanel'
 import LlmActionsList from '@/components/llm/LlmActionsList'
+import SocialPanel from '@/components/social/SocialPanel'
 import DetailPanel from '@/components/details/DetailPanel'
 import {
   Sheet,
@@ -24,11 +25,16 @@ function SplitView() {
         ? BuildingList
         : activeTab === 'reports'
           ? ReportsList
-          : activeTab === 'llm-activity'
-            ? LlmActionsList
-            : AgentsPanel
+          : activeTab === 'social'
+            ? SocialPanel
+            : activeTab === 'llm-activity'
+              ? LlmActionsList
+              : AgentsPanel
 
-  const showDetailPanel = activeTab !== 'agents' && activeTab !== 'llm-activity'
+  const showDetailPanel =
+    activeTab !== 'agents' &&
+    activeTab !== 'llm-activity' &&
+    activeTab !== 'social'
 
   return (
     <>

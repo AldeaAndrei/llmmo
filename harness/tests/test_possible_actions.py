@@ -26,7 +26,7 @@ class FilterPlanTests(unittest.TestCase):
                 ],
             }
         )
-        possible = {"upgrades": [], "train": [], "attacks": []}
+        possible = {"upgrades": [], "train": [], "targets": [], "diplomacy": {"players": []}}
 
         filtered, dropped = filter_plan_to_possible_actions(plan, possible)
 
@@ -73,15 +73,29 @@ class CompactPossibleActionsTests(unittest.TestCase):
                     "cost": {"wood": 0, "stone": 0, "gold": 1, "food": 1},
                 }
             ],
-            "attacks": [
+            "targets": [
                 {
                     "targetCityId": "abc",
+                    "targetPlayerId": "player-1",
                     "targetName": "Enemy",
-                    "targetX": 1,
-                    "targetY": 2,
-                    "troops": [{"type": "soldier", "count": 1}],
+                    "distance": 5,
+                    "travelTicks": 3,
+                    "canAttack": True,
+                    "canScout": False,
                 }
             ],
+            "diplomacy": {
+                "players": [
+                    {
+                        "playerId": "player-1",
+                        "name": "Enemy",
+                        "playerType": "llm",
+                        "relation": None,
+                    }
+                ],
+                "canSendMessage": True,
+                "canDeclareDiplomacy": False,
+            },
         }
 
         compact = compact_possible_actions(raw)
@@ -90,7 +104,9 @@ class CompactPossibleActionsTests(unittest.TestCase):
         self.assertEqual([{"buildingType": "bakery", "fromLevel": 1, "toLevel": 2}], compact["upgrades"])
         self.assertNotIn("cost", compact["upgrades"][0])
         self.assertEqual([{"troopType": "soldier", "count": 1}], compact["train"])
-        self.assertEqual("abc", compact["attacks"][0]["targetCityId"])
+        self.assertEqual("abc", compact["targets"][0]["targetCityId"])
+        self.assertTrue(compact["diplomacy"]["canSendMessage"])
+        self.assertFalse(compact["diplomacy"]["canDeclareDiplomacy"])
 
 
 if __name__ == "__main__":
