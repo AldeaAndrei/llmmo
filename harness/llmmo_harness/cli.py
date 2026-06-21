@@ -4,6 +4,8 @@ import sys
 import time
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from llmmo_harness.client import GameClient
 from llmmo_harness.config import HarnessConfig, load_config
 from llmmo_harness.executor import execute_pending
@@ -26,6 +28,17 @@ def _build_planner(config: HarnessConfig, memory: DecisionMemory):
     raise ValueError(f"Unknown planner type: {config.planner.type}")
 
 
+def _format_plan_error(error: Exception) -> str:
+    if isinstance(error, ValidationError):
+        for item in error.errors(include_url=False):
+            location = ".".join(str(part) for part in item.get("loc", ()))
+            message = item.get("msg", "invalid")
+            if location:
+                return f"{location}: {message}"
+        return "invalid plan"
+    return str(error)
+
+
 def cmd_plan(config: HarnessConfig) -> int:
     api_key = config.resolve_api_key()
     client = GameClient(config.api.base_url, api_key)
@@ -38,7 +51,7 @@ def cmd_plan(config: HarnessConfig) -> int:
         city_id = resolve_first_city_id(client)
         plan_id = queue.enqueue_plan(plan, config.planner.type, city_id)
     except Exception as error:
-        print(f"plan failed: {error}", file=sys.stderr)
+        print(f"plan failed: {_format_plan_error(error)}", file=sys.stderr)
         return 1
 
     print(

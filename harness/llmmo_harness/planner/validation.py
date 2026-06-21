@@ -34,13 +34,30 @@ def _command_summary(
     return f"clear_relation {command.toPlayerId}"
 
 
-def _diplomacy_player_ids(possible: dict) -> set[str]:
+def _relation_player_ids(possible: dict) -> set[str]:
     diplomacy = possible.get("diplomacy") or {}
+    relations = diplomacy.get("relations") or diplomacy.get("players") or []
     return {
-        str(player.get("playerId", "")).lower()
-        for player in diplomacy.get("players", [])
-        if player.get("playerId")
+        str(relation.get("playerId", "")).lower()
+        for relation in relations
+        if relation.get("playerId")
     }
+
+
+def _target_player_ids(possible: dict) -> set[str]:
+    return {
+        str(target.get("targetPlayerId", "")).lower()
+        for target in possible.get("targets", [])
+        if target.get("targetPlayerId")
+    }
+
+
+def _diplomacy_recipient_ids(possible: dict) -> set[str]:
+    recipient_ids = _target_player_ids(possible) | _relation_player_ids(possible)
+    latest = (possible.get("diplomacy") or {}).get("latestUnreadMessage")
+    if isinstance(latest, dict) and latest.get("fromPlayerId"):
+        recipient_ids.add(str(latest["fromPlayerId"]).lower())
+    return recipient_ids
 
 
 def command_allowed(
@@ -57,13 +74,13 @@ def command_allowed(
         diplomacy = possible.get("diplomacy") or {}
         if not diplomacy.get("canSendMessage", False):
             return False
-        return command.toPlayerId.lower() in _diplomacy_player_ids(possible)
+        return command.toPlayerId.lower() in _diplomacy_recipient_ids(possible)
 
     if isinstance(command, (AllyCommand, EnemyCommand, ClearRelationCommand)):
         diplomacy = possible.get("diplomacy") or {}
         if not diplomacy.get("canDeclareDiplomacy", False):
             return False
-        return command.toPlayerId.lower() in _diplomacy_player_ids(possible)
+        return command.toPlayerId.lower() in _diplomacy_recipient_ids(possible)
 
     if isinstance(command, UpgradeCommand):
         allowed = {

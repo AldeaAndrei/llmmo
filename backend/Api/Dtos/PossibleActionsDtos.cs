@@ -18,10 +18,11 @@ public record PossibleTargetDto(
     int Distance,
     int TravelTicks,
     bool CanAttack,
-    bool CanScout);
+    bool CanScout,
+    string? Relation);
 
 public record PossibleDiplomacyActionsDto(
-    IReadOnlyList<DiplomacyOverviewRelationDto> Players,
+    IReadOnlyList<DiplomacyOverviewRelationDto> Relations,
     bool CanSendMessage,
     bool CanDeclareDiplomacy,
     DiplomacyOverviewMessageDto? LatestUnreadMessage);

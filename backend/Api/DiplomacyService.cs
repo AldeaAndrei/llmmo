@@ -261,50 +261,68 @@ public class DiplomacyService
         var canSendMessage = cooldowns.Message.RemainingTicks == 0;
         var canDeclareDiplomacy = cooldowns.Diplomacy.RemainingTicks == 0;
 
-        var allPlayers = await _db.Players.AsNoTracking()
-            .Where(p => p.Id != authPlayerId)
-            .OrderBy(p => p.Name)
-            .ToListAsync(cancellationToken);
-
         var myRelations = await _db.PlayerRelations.AsNoTracking()
             .Where(r => r.FromPlayerId == authPlayerId)
-            .ToDictionaryAsync(r => r.ToPlayerId, r => r.Relation, cancellationToken);
+            .ToListAsync(cancellationToken);
 
-        var players = allPlayers.Select(other => new DiplomacyOverviewRelationDto(
+        if (myRelations.Count == 0)
+        {
+            return new PossibleDiplomacyActionsDto(
+                [],
+                canSendMessage,
+                canDeclareDiplomacy,
+                await LoadLatestUnreadMessageAsync(authPlayerId, cancellationToken));
+        }
+
+        var relatedPlayerIds = myRelations.Select(relation => relation.ToPlayerId).ToList();
+        var relatedPlayers = await _db.Players.AsNoTracking()
+            .Where(player => relatedPlayerIds.Contains(player.Id))
+            .OrderBy(player => player.Name)
+            .ToListAsync(cancellationToken);
+
+        var relationByPlayerId = myRelations.ToDictionary(
+            relation => relation.ToPlayerId,
+            relation => relation.Relation);
+
+        var relations = relatedPlayers.Select(other => new DiplomacyOverviewRelationDto(
             other.Id,
             other.Name,
             other.PlayerType == PlayerType.Human ? "human" : "llm",
-            myRelations.TryGetValue(other.Id, out var relation)
-                ? relation == DiplomacyRelationType.Ally ? "ally" : "enemy"
-                : null)).ToList();
+            relationByPlayerId[other.Id] == DiplomacyRelationType.Ally ? "ally" : "enemy")).ToList();
 
+        return new PossibleDiplomacyActionsDto(
+            relations,
+            canSendMessage,
+            canDeclareDiplomacy,
+            await LoadLatestUnreadMessageAsync(authPlayerId, cancellationToken));
+    }
+
+    private async Task<DiplomacyOverviewMessageDto?> LoadLatestUnreadMessageAsync(
+        Guid authPlayerId,
+        CancellationToken cancellationToken)
+    {
         var latestUnread = await _db.PlayerMessages
             .Include(message => message.FromPlayer)
             .Where(message => message.ToPlayerId == authPlayerId && message.ReadAt == null)
             .OrderByDescending(message => message.SentAt)
             .FirstOrDefaultAsync(cancellationToken);
 
-        DiplomacyOverviewMessageDto? latestUnreadDto = null;
-        if (latestUnread is not null)
+        if (latestUnread is null)
         {
-            latestUnread.ReadAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
-
-            latestUnreadDto = new DiplomacyOverviewMessageDto(
-                latestUnread.Id,
-                latestUnread.FromPlayerId,
-                latestUnread.FromPlayer.Name,
-                latestUnread.Subject,
-                latestUnread.Body,
-                latestUnread.SentAt,
-                latestUnread.SentAtTick);
+            return null;
         }
 
-        return new PossibleDiplomacyActionsDto(
-            players,
-            canSendMessage,
-            canDeclareDiplomacy,
-            latestUnreadDto);
+        latestUnread.ReadAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new DiplomacyOverviewMessageDto(
+            latestUnread.Id,
+            latestUnread.FromPlayerId,
+            latestUnread.FromPlayer.Name,
+            latestUnread.Subject,
+            latestUnread.Body,
+            latestUnread.SentAt,
+            latestUnread.SentAtTick);
     }
 
     public async Task<DiplomacyOverviewDto> GetOverviewAsync(
@@ -318,7 +336,7 @@ public class DiplomacyService
         var diplomacy = await BuildPossibleDiplomacyAsync(authPlayerId, cancellationToken);
 
         return new DiplomacyOverviewDto(
-            diplomacy.Players,
+            diplomacy.Relations,
             diplomacy.LatestUnreadMessage,
             BuildCooldowns(player, currentTick));
     }

@@ -10,7 +10,7 @@ planner:
     # Standalone Ollama running on the host (separate compose), published on 11434.
     base_url: http://ollama:11434/v1
     model: llama3.2:3b
-    temperature: 0.3
+    temperature: 0.1
     request_timeout_seconds: 300
     log_prompts: true
 

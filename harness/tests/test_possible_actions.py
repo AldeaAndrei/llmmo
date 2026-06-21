@@ -26,7 +26,7 @@ class FilterPlanTests(unittest.TestCase):
                 ],
             }
         )
-        possible = {"upgrades": [], "train": [], "targets": [], "diplomacy": {"players": []}}
+        possible = {"upgrades": [], "train": [], "targets": [], "diplomacy": {"relations": []}}
 
         filtered, dropped = filter_plan_to_possible_actions(plan, possible)
 
@@ -97,10 +97,18 @@ class CompactPossibleActionsTests(unittest.TestCase):
                 }
             ],
             "diplomacy": {
+                "relations": [
+                    {
+                        "playerId": "player-2",
+                        "name": "Ally",
+                        "playerType": "llm",
+                        "relation": "ally",
+                    }
+                ],
                 "players": [
                     {
                         "playerId": "player-1",
-                        "name": "Enemy",
+                        "name": "Neutral",
                         "playerType": "llm",
                         "relation": None,
                     }
@@ -119,6 +127,8 @@ class CompactPossibleActionsTests(unittest.TestCase):
         self.assertEqual("abc", compact["targets"][0]["targetCityId"])
         self.assertTrue(compact["diplomacy"]["canSendMessage"])
         self.assertFalse(compact["diplomacy"]["canDeclareDiplomacy"])
+        self.assertEqual(1, len(compact["diplomacy"]["relations"]))
+        self.assertEqual("ally", compact["diplomacy"]["relations"][0]["relation"])
 
 
 class PlannerHintsTests(unittest.TestCase):
@@ -141,17 +151,40 @@ class PlannerHintsTests(unittest.TestCase):
 
         hints = build_planner_hints(possible, recent)
 
-        self.assertTrue(any("Scouting is NOT training" in hint for hint in hints))
-        self.assertTrue(any("BrightCrown" in hint for hint in hints))
+        self.assertTrue(any('"reason"' in hint for hint in hints))
         self.assertTrue(any("7 spy" in hint for hint in hints))
 
-    def test_hints_empty_without_scout_targets(self) -> None:
+    def test_hints_prioritize_enemy_attack(self) -> None:
+        possible = {
+            "troops": [{"type": "soldier", "count": 1}, {"type": "spy", "count": 2}],
+            "targets": [
+                {
+                    "targetCityId": "enemy-city",
+                    "targetName": "Admin",
+                    "travelTicks": 53,
+                    "canAttack": True,
+                    "canScout": True,
+                    "relation": "enemy",
+                }
+            ],
+        }
+
+        hints = build_planner_hints(possible, [])
+
+        self.assertTrue(any("declared enemy" in hint for hint in hints))
+        self.assertTrue(any("Admin" in hint for hint in hints))
+        self.assertTrue(hints[1].startswith("Priority this plan: attack declared enemy"))
+
+    def test_hints_include_inventory_count_reminder_without_scout_targets(self) -> None:
         possible = {
             "troops": [{"type": "spy", "count": 5}],
             "targets": [{"targetCityId": "abc", "canScout": False}],
         }
 
-        self.assertEqual([], build_planner_hints(possible, []))
+        hints = build_planner_hints(possible, [])
+
+        self.assertEqual(1, len(hints))
+        self.assertIn("Command count is always exactly 1", hints[0])
 
 
 if __name__ == "__main__":

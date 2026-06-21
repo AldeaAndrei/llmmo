@@ -105,6 +105,13 @@ public class PossibleActionsService
             .OrderBy(target => Math.Abs(target.X - sourceCity.X) + Math.Abs(target.Y - sourceCity.Y))
             .ToListAsync(cancellationToken);
 
+        var myRelations = await _db.PlayerRelations.AsNoTracking()
+            .Where(relation => relation.FromPlayerId == playerId)
+            .ToDictionaryAsync(
+                relation => relation.ToPlayerId,
+                relation => relation.Relation,
+                cancellationToken);
+
         var targets = new List<PossibleTargetDto>();
         var attackTroopEntries = new List<TroopStackEntry> { new("soldier", 1) };
         var scoutTroopEntries = new List<TroopStackEntry> { new("spy", 1) };
@@ -156,7 +163,10 @@ public class PossibleActionsService
                 distance,
                 travelTicks,
                 canAttack,
-                canScout));
+                canScout,
+                myRelations.TryGetValue(target.PlayerId, out var relation)
+                    ? relation == DiplomacyRelationType.Ally ? "ally" : "enemy"
+                    : null));
         }
 
         return targets;

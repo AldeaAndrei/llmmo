@@ -134,15 +134,7 @@ Command = Annotated[
 class CommandPlan(BaseModel):
     schemaVersion: int = 1
     observedAtTick: int = 0
-    commands: list[
-        UpgradeCommand
-        | TrainCommand
-        | AttackCommand
-        | MessageCommand
-        | AllyCommand
-        | EnemyCommand
-        | ClearRelationCommand
-    ] = Field(default_factory=list)
+    commands: list[Command] = Field(default_factory=list)
 
     @field_validator("schemaVersion")
     @classmethod
