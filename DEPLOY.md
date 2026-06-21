@@ -4,7 +4,7 @@ Run these commands on the minipc whenever you want to pull latest code and resta
 
 Uses **docker-compose v1** (`docker-compose`, not `docker compose`). Run everything from the repo root.
 
-Replace `/path/to/llmmo` with your clone path (e.g. `~/llmmo`).
+On this host, Docker requires **`sudo`** (user `minipcuser` is not in the `docker` group).
 
 ---
 
@@ -12,23 +12,23 @@ Replace `/path/to/llmmo` with your clone path (e.g. `~/llmmo`).
 
 ```bash
 # 1. Go to the project
-cd /path/to/llmmo
+cd ~/projects/llmmo
 
 # 2. Pull latest code
 git pull
 
 # 3. Stop all four containers
-docker-compose --profile agents stop db backend frontend harness
+sudo docker-compose --profile agents stop db backend frontend harness
 
 # 4. Remove all four containers
-docker-compose --profile agents rm -f db backend frontend harness
+sudo docker-compose --profile agents rm -f db backend frontend harness
 
 # 5. Build and start all four containers
-docker-compose --profile agents build db backend frontend harness
-docker-compose --profile agents up -d db backend frontend harness
+sudo docker-compose --profile agents build db backend frontend harness
+sudo docker-compose --profile agents up -d db backend frontend harness
 
 # 6. Follow harness logs
-docker-compose --profile agents logs -f harness
+sudo docker-compose --profile agents logs -f harness
 ```
 
 Press `Ctrl+C` to stop following logs. The harness container keeps running.
@@ -37,7 +37,7 @@ Press `Ctrl+C` to stop following logs. The harness container keeps running.
 
 ## Container names
 
-Compose names containers `{project}_{service}_1`. If the project directory is `llmmo`, the names are:
+Compose names containers `{project}_{service}_1`. For this project:
 
 | Service   | Container name        |
 |-----------|-----------------------|
@@ -49,7 +49,7 @@ Compose names containers `{project}_{service}_1`. If the project directory is `l
 Check with:
 
 ```bash
-docker ps -a --filter name=llmmo_
+sudo docker ps -a --filter name=llmmo_
 ```
 
 ---
@@ -59,14 +59,26 @@ docker ps -a --filter name=llmmo_
 Older docker-compose v1 sometimes leaves ghost containers after `rm`. Remove them manually, then run step 5 again:
 
 ```bash
-docker rm -f llmmo_db_1 llmmo_backend_1 llmmo_frontend_1 llmmo_harness_1
+sudo docker rm -f llmmo_db_1 llmmo_backend_1 llmmo_frontend_1 llmmo_harness_1
 # also remove any hash-prefixed ghosts, e.g.:
-# docker rm -f 626f682b6a68_llmmo_backend_1
+# sudo docker rm -f 626f682b6a68_llmmo_backend_1
 
-docker-compose --profile agents up -d db backend frontend harness
+sudo docker-compose --profile agents up -d db backend frontend harness
 ```
 
 Avoid `--force-recreate` on the full stack; it can try to recreate `db` unnecessarily.
+
+---
+
+## Permission denied on Docker socket
+
+If you see `PermissionError: [Errno 13] Permission denied` when running `docker-compose` without sudo, use `sudo` as shown above.
+
+Optional one-time fix (log out and back in afterward):
+
+```bash
+sudo usermod -aG docker $USER
+```
 
 ---
 
