@@ -70,6 +70,40 @@ Avoid `--force-recreate` on the full stack; it can try to recreate `db` unnecess
 
 ---
 
+## Harness: `Connection refused`
+
+Both `plan` and `execute` talk to the backend at `http://backend:8080/api/v1` inside Docker. Ollama is reachable by container name at `http://ollama:11434` on the shared Docker network.
+
+**1. Check backend is up and healthy**
+
+```bash
+sudo docker-compose ps
+sudo docker-compose logs --tail=80 backend
+curl -s http://localhost:5080/health
+```
+
+Backend should show `healthy`. If `curl` fails or logs show errors, fix backend first (often missing `.env` values like `POSTGRES_PASSWORD` or `JWT_SECRET`).
+
+**2. Check Ollama from the harness container** (plan only; execute does not need it)
+
+```bash
+sudo docker exec llmmo_harness_1 python -c "import httpx; print(httpx.get('http://ollama:11434/api/tags', timeout=10).status_code)"
+```
+
+If that fails, the `ollama` container is down or not on the shared Docker network.
+
+**3. Rebuild harness** after config changes (Ollama URL is baked into the image)
+
+```bash
+sudo docker-compose --profile agents build harness
+sudo docker-compose --profile agents up -d harness
+sudo docker-compose --profile agents logs -f harness
+```
+
+You should see `API ready at http://backend:8080/api/v1` before the first plan/execute cycle.
+
+---
+
 ## Permission denied on Docker socket
 
 If you see `PermissionError: [Errno 13] Permission denied` when running `docker-compose` without sudo, use `sudo` as shown above.

@@ -4,6 +4,7 @@ import sys
 import time
 from pathlib import Path
 
+import httpx
 from pydantic import ValidationError
 
 from llmmo_harness.client import GameClient
@@ -36,7 +37,26 @@ def _format_plan_error(error: Exception) -> str:
             if location:
                 return f"{location}: {message}"
         return "invalid plan"
+    if isinstance(error, httpx.ConnectError):
+        return f"connection refused ({error.request.url})"
     return str(error)
+
+
+def _wait_for_api(config: HarnessConfig, timeout_seconds: float = 120.0) -> None:
+    url = f"{config.api.base_url.rstrip('/')}/world"
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                response = client.get(url)
+            if response.status_code == 200:
+                print(f"API ready at {config.api.base_url}", flush=True)
+                return
+            print(f"Waiting for API ({response.status_code})...", flush=True)
+        except httpx.ConnectError:
+            print(f"Waiting for API at {config.api.base_url}...", flush=True)
+        time.sleep(5)
+    raise TimeoutError(f"API not reachable at {config.api.base_url} after {timeout_seconds}s")
 
 
 def cmd_plan(config: HarnessConfig) -> int:
@@ -75,7 +95,7 @@ def cmd_execute(config: HarnessConfig) -> int:
             max_commands=config.schedule.max_commands_per_execute,
         )
     except Exception as error:
-        print(f"execute failed: {error}", file=sys.stderr)
+        print(f"execute failed: {_format_plan_error(error)}", file=sys.stderr)
         return 1
 
     pending = queue.pending_count()
@@ -121,6 +141,12 @@ def cmd_run(config: HarnessConfig) -> int:
         f"Running harness loop (plan every {plan_interval}s, "
         f"execute every {execute_interval}s). Ctrl+C to stop."
     )
+
+    try:
+        _wait_for_api(config)
+    except TimeoutError as error:
+        print(f"startup failed: {error}", file=sys.stderr)
+        return 1
 
     try:
         while True:
