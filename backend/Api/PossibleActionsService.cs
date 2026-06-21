@@ -169,6 +169,6 @@ public class PossibleActionsService
                     : null));
         }
 
-        return targets;
+        return targets.Take(3).ToList();
     }
 }

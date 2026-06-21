@@ -14,128 +14,41 @@ def format_recent_decisions(records: list) -> list[dict]:
     ]
 
 
-def _troop_count(possible: dict, troop_type: str) -> int:
-    for troop in possible.get("troops") or []:
-        if troop.get("type") == troop_type:
-            return int(troop.get("count", 0))
-    return 0
+def has_unread_message(possible: dict) -> bool:
+    latest = (possible.get("diplomacy") or {}).get("latestUnreadMessage")
+    return isinstance(latest, dict) and bool(latest.get("id"))
 
 
-def _spy_count(possible: dict) -> int:
-    return _troop_count(possible, "spy")
+def compact_buildings(buildings: list[dict]) -> list[dict]:
+    compact: list[dict] = []
+    for building in buildings:
+        entry: dict = {
+            "type": building.get("type"),
+            "level": building.get("level"),
+            "description": building.get("description"),
+            "currentEffect": building.get("currentEffect"),
+        }
+        next_effect = building.get("nextLevelEffect")
+        if next_effect:
+            entry["nextLevelEffect"] = next_effect
+        production = building.get("productionPerTick")
+        if production is not None:
+            entry["productionPerTick"] = production
+            resource = building.get("productionResource")
+            if resource:
+                entry["productionResource"] = resource
+        upgrade_cost = building.get("nextUpgradeCost")
+        if upgrade_cost:
+            entry["nextUpgradeCost"] = upgrade_cost
+        compact.append(entry)
+    return compact
 
 
-def _soldier_count(possible: dict) -> int:
-    return _troop_count(possible, "soldier")
-
-
-def _recent_train_spy_count(recent: list[dict]) -> int:
-    count = 0
-    for entry in recent:
-        action = entry.get("action") or {}
-        if action.get("type") == "train" and action.get("troopType") == "spy":
-            count += 1
-    return count
-
-
-def _recent_scout_count(recent: list[dict]) -> int:
-    count = 0
-    for entry in recent:
-        action = entry.get("action") or {}
-        if action.get("type") == "attack" and action.get("troopType") == "spy":
-            count += 1
-    return count
-
-
-def build_planner_hints(possible: dict, recent: list[dict]) -> list[str]:
-    """Short tactical hints derived from game state (not available to the model otherwise)."""
-    hints: list[str] = [
-        "Command count is always exactly 1 for train and attack — "
-        "troops[].count is your inventory, NOT the command count.",
-    ]
-
-    targets = possible.get("targets") or []
-    soldier_count = _soldier_count(possible)
-    enemy_attack_targets = [
-        target
-        for target in targets
-        if target.get("relation") == "enemy" and target.get("canAttack")
-    ]
-
-    if soldier_count >= 1 and enemy_attack_targets:
-        nearest = min(enemy_attack_targets, key=lambda target: target.get("travelTicks", 999))
-        hints.append(
-            "Priority this plan: attack declared enemy "
-            f"{nearest['targetName']} with a soldier: "
-            + json.dumps(
-                {
-                    "type": "attack",
-                    "targetCityId": nearest["targetCityId"],
-                    "troopType": "soldier",
-                    "count": 1,
-                    "reason": (
-                        f"Strike enemy {nearest['targetName']} "
-                        f"(travelTicks={nearest['travelTicks']}) while soldiers are ready."
-                    ),
-                },
-                separators=(",", ":"),
-            )
-        )
-
-    spy_count = _spy_count(possible)
-    scout_targets = [target for target in targets if target.get("canScout")]
-
-    if scout_targets:
-        nearest = min(scout_targets, key=lambda target: target.get("travelTicks", 999))
-        target_line = (
-            f"{nearest['targetName']} (targetCityId={nearest['targetCityId']}, "
-            f"travelTicks={nearest['travelTicks']})"
-        )
-
-        hints.append(
-            "Scouting is NOT training. To scout, use "
-            + json.dumps(
-                {
-                    "type": "attack",
-                    "targetCityId": nearest["targetCityId"],
-                    "troopType": "spy",
-                    "count": 1,
-                    "reason": f"Scout {nearest['targetName']} before committing troops.",
-                },
-                separators=(",", ":"),
-            )
-            + " on a target where canScout is true."
-        )
-
-        if spy_count >= 1:
-            hints.append(f"You currently have {spy_count} spy/spies available to send.")
-
-        recent_train_spy = _recent_train_spy_count(recent)
-        recent_scouts = _recent_scout_count(recent)
-
-        if spy_count >= 2 or (
-            spy_count >= 1 and recent_train_spy >= 1 and recent_scouts == 0
-        ):
-            if not enemy_attack_targets:
-                hints.append(
-                    f"Priority this plan: scout {target_line} instead of training another spy."
-                )
-
-        if recent_train_spy >= 2 and recent_scouts == 0:
-            hints.append(
-                "Do not choose train spy again until you have scouted at least one city."
-            )
-
-    return hints
-
-
-def compact_possible_actions(actions: dict) -> dict:
-    """Trim possible-actions payload for the LLM prompt."""
-    diplomacy = actions.get("diplomacy") or {}
+def compact_diplomacy(diplomacy: dict) -> dict:
     relations = diplomacy.get("relations") or diplomacy.get("players") or []
     latest_unread = diplomacy.get("latestUnreadMessage")
 
-    compact_diplomacy = {
+    compact: dict = {
         "relations": [
             {
                 "playerId": relation.get("playerId"),
@@ -150,8 +63,8 @@ def compact_possible_actions(actions: dict) -> dict:
         "canDeclareDiplomacy": diplomacy.get("canDeclareDiplomacy", False),
     }
 
-    if latest_unread:
-        compact_diplomacy["latestUnreadMessage"] = {
+    if isinstance(latest_unread, dict):
+        compact["latestUnreadMessage"] = {
             "id": latest_unread.get("id"),
             "fromPlayerId": latest_unread.get("fromPlayerId"),
             "fromPlayerName": latest_unread.get("fromPlayerName"),
@@ -160,8 +73,12 @@ def compact_possible_actions(actions: dict) -> dict:
             "sentAtTick": latest_unread.get("sentAtTick"),
         }
 
-    compact_targets = []
-    for target in actions.get("targets", []):
+    return compact
+
+
+def compact_targets(targets: list[dict]) -> list[dict]:
+    compact_targets_list: list[dict] = []
+    for target in targets:
         entry = {
             "targetCityId": target["targetCityId"],
             "targetPlayerId": target["targetPlayerId"],
@@ -174,8 +91,65 @@ def compact_possible_actions(actions: dict) -> dict:
         relation = target.get("relation")
         if relation in ("ally", "enemy"):
             entry["relation"] = relation
-        compact_targets.append(entry)
+        compact_targets_list.append(entry)
+    return compact_targets_list
 
+
+def build_available_actions(possible: dict) -> dict:
+    diplomacy = possible.get("diplomacy") or {}
+
+    if has_unread_message(possible):
+        return {
+            "diplomacyOnly": True,
+            "canSendMessage": diplomacy.get("canSendMessage", False),
+            "canDeclareDiplomacy": diplomacy.get("canDeclareDiplomacy", False),
+        }
+
+    return {
+        "upgrades": [
+            {
+                "buildingType": upgrade["buildingType"],
+                "fromLevel": upgrade["fromLevel"],
+                "toLevel": upgrade["toLevel"],
+            }
+            for upgrade in possible.get("upgrades", [])
+        ],
+        "train": [
+            {"troopType": option["troopType"], "count": option["count"]}
+            for option in possible.get("train", [])
+        ],
+        "targets": compact_targets(possible.get("targets", [])),
+    }
+
+
+def unread_reports(reports: list[dict]) -> list[dict]:
+    return [report for report in reports if report.get("readAt") is None]
+
+
+def build_planner_context(
+    city: dict,
+    possible: dict,
+    reports: list[dict],
+    recent: list[dict],
+) -> dict:
+    return {
+        "cityState": {
+            "currentTick": possible.get("currentTick"),
+            "resources": possible.get("resources"),
+            "foodProductionPerTick": possible.get("foodProductionPerTick"),
+            "foodUpkeepPerTick": possible.get("foodUpkeepPerTick"),
+            "troops": possible.get("troops", []),
+            "buildings": compact_buildings(city.get("buildings", [])),
+        },
+        "diplomacy": compact_diplomacy(possible.get("diplomacy") or {}),
+        "unreadReports": unread_reports(reports),
+        "availableActions": build_available_actions(possible),
+        "recentDecisions": recent,
+    }
+
+
+def compact_possible_actions(actions: dict) -> dict:
+    """Legacy compact shape — prefer build_planner_context for prompts."""
     return {
         "currentTick": actions.get("currentTick"),
         "resources": actions.get("resources"),
@@ -194,8 +168,8 @@ def compact_possible_actions(actions: dict) -> dict:
             {"troopType": option["troopType"], "count": option["count"]}
             for option in actions.get("train", [])
         ],
-        "targets": compact_targets,
-        "diplomacy": compact_diplomacy,
+        "targets": compact_targets(actions.get("targets", [])),
+        "diplomacy": compact_diplomacy(actions.get("diplomacy") or {}),
     }
 
 
@@ -268,14 +242,14 @@ def compact_planner_state(world: dict, city: dict, troop_catalog: list[dict]) ->
     }
 
 
-def resolve_first_city(client) -> dict:
+def resolve_first_city(client: GameClient) -> dict:
     cities = client.get_cities_me()
     if not cities:
         raise ValueError("No cities found for this agent.")
     return cities[0]
 
 
-def resolve_first_city_id(client) -> str:
+def resolve_first_city_id(client: GameClient) -> str:
     city = resolve_first_city(client)
     city_id = city.get("id")
     if not city_id:

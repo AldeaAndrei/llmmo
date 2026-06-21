@@ -8,6 +8,7 @@ from llmmo_harness.schema import (
     TrainCommand,
     UpgradeCommand,
 )
+from llmmo_harness.state import has_unread_message
 
 
 def _command_summary(
@@ -70,6 +71,13 @@ def command_allowed(
     | ClearRelationCommand,
     possible: dict,
 ) -> bool:
+    if has_unread_message(possible):
+        if not isinstance(
+            command,
+            (MessageCommand, AllyCommand, EnemyCommand, ClearRelationCommand),
+        ):
+            return False
+
     if isinstance(command, MessageCommand):
         diplomacy = possible.get("diplomacy") or {}
         if not diplomacy.get("canSendMessage", False):
@@ -100,6 +108,8 @@ def command_allowed(
     for entry in possible.get("targets", []):
         if str(entry.get("targetCityId", "")).lower() != target_id:
             continue
+        if entry.get("relation") == "ally":
+            return False
         if command.troopType.lower() == "soldier" and entry.get("canAttack"):
             return command.count == 1
         if command.troopType.lower() == "spy" and entry.get("canScout"):

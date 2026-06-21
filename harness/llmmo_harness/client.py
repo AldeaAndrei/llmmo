@@ -111,6 +111,12 @@ class GameClient:
             message = response.text
         raise GameApiError(response.status_code, message, error_body)
 
+    def get_reports(self) -> list[dict]:
+        response = self._request("GET", "/reports")
+        if response.status_code != 200:
+            raise GameApiError(response.status_code, response.text)
+        return response.json()
+
     def get_diplomacy_overview(self) -> dict:
         response = self._request("GET", "/diplomacy/overview")
         if response.status_code != 200:

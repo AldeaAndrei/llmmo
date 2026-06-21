@@ -10,14 +10,19 @@ from llmmo_harness.planner.normalize import parse_plan_from_llm
 from llmmo_harness.planner.validation import filter_plan_to_possible_actions
 from llmmo_harness.schema import CommandPlan, set_building_types
 from llmmo_harness.state import (
-    build_planner_hints,
-    compact_possible_actions,
+    build_planner_context,
     format_recent_decisions,
+    resolve_first_city,
     resolve_first_city_id,
 )
 
-SYSTEM_PROMPT = """You are a strategic planner for LLMMO, a tick-based city builder.
-Output ONLY valid JSON (no markdown, no commentary outside the JSON).
+PERSONALITY_PROMPT = """You are a neutral strategic governor for a tick-based city builder.
+You pursue economic growth and survival.
+You attack players you have declared as enemies when you can field troops.
+You never attack declared allies.
+You respond to diplomacy when you receive messages."""
+
+GAME_RULES_PROMPT = """Output ONLY valid JSON (no markdown, no commentary outside the JSON).
 
 Schema:
 {{
@@ -50,13 +55,13 @@ Example valid plan (scout):
   ]
 }}
 
-Planning rules (follow strictly):
+Game rules (follow strictly):
 0. Every command object MUST include "reason" (non-empty string). Never omit reason.
-0b. For train and attack, "count" is always exactly 1. Ignore troops[].count inventory values.
-1. You may ONLY choose commands that appear in the Possible actions section below.
-2. For upgrade, use a buildingType from upgrades.
-3. For train, use troopType/count exactly as listed in train (always count 1).
-4. For attack, use targetCityId from targets where canAttack is true (soldier) or canScout is true (spy).
+0b. For train and attack, "count" is always exactly 1. troops[].count is inventory, not command count.
+1. You may ONLY choose commands allowed by availableActions in the context below.
+2. For upgrade, use a buildingType from availableActions.upgrades.
+3. For train, use troopType/count exactly as listed in availableActions.train (always count 1).
+4. For attack, use targetCityId from availableActions.targets where canAttack is true (soldier) or canScout is true (spy).
 5. Training a spy does NOT scout. Scouting requires attack with troopType spy, count 1, and a reason.
 6. diplomacy.relations lists only declared allies and enemies (no neutral players).
 7. Message/ally/enemy/clear_relation use toPlayerId from targets[].targetPlayerId, diplomacy.relations, or latestUnreadMessage.fromPlayerId.
@@ -66,10 +71,10 @@ Planning rules (follow strictly):
 11. In upgrade reasons, name fromLevel→toLevel from the matching upgrade entry.
 12. Do not repeat the same action as your last two decisions unless still clearly optimal.
 13. Each reason must be specific to this tick (no copy-paste).
-14. If any target has relation "enemy" and canAttack is true, prefer attacking the nearest enemy with a soldier.
-15. If you have 2+ spies and no urgent enemy attack, scout a nearby city (attack + spy) before training another spy.
-16. If diplomacy.latestUnreadMessage is present, consider replying with a message command when canSendMessage is true.
-"""
+14. When availableActions.diplomacyOnly is true, only message/ally/enemy/clear_relation commands are valid.
+15. Never attack a target with relation "ally"."""
+
+SYSTEM_PROMPT = f"{PERSONALITY_PROMPT}\n\n{GAME_RULES_PROMPT}"
 
 
 def _extract_json(text: str) -> str:
@@ -107,34 +112,25 @@ class OllamaPlanner:
         self.memory = memory
 
     def plan(self, client: GameClient) -> CommandPlan:
-        city_id = resolve_first_city_id(client)
+        city = resolve_first_city(client)
+        city_id = str(city["id"])
         buildings = client.get_building_catalog()
         set_building_types(entry["type"] for entry in buildings)
 
         possible = client.get_possible_actions(city_id)
+        reports = client.get_reports()
         observed_tick = int(possible.get("currentTick", 0))
-        prompt_actions = compact_possible_actions(possible)
         recent = format_recent_decisions(self.memory.get_recent(city_id, limit=2))
+        context = build_planner_context(city, possible, reports, recent)
 
         system = SYSTEM_PROMPT
 
-        user_parts = [
-            "Possible actions (only these commands are valid right now):\n"
-            f"{json.dumps(prompt_actions, separators=(',', ':'))}",
-        ]
-        if recent:
-            user_parts.append(
-                "Your last two executed decisions (avoid repeating unless still optimal):\n"
-                f"{json.dumps(recent, separators=(',', ':'))}"
-            )
-        hints = build_planner_hints(possible, recent)
-        if hints:
-            user_parts.append("Strategic hints:\n" + "\n".join(f"- {hint}" for hint in hints))
-        user_parts.append(
+        user_content = (
+            "Game context (JSON sections):\n"
+            f"{json.dumps(context, separators=(',', ':'))}\n\n"
             f"Set observedAtTick to {observed_tick}. "
-            "Return a plan with 0–2 commands taken only from Possible actions."
+            "Return a plan with 0–2 commands allowed by availableActions."
         )
-        user_content = "\n\n".join(user_parts)
 
         url = f"{self.config.base_url.rstrip('/')}/chat/completions"
         payload = {

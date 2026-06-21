@@ -1,7 +1,18 @@
 from llmmo_harness.executor import command_action_dict
 from llmmo_harness.planner.validation import filter_plan_to_possible_actions
-from llmmo_harness.schema import AttackCommand, CommandPlan, TrainCommand
-from llmmo_harness.state import build_planner_hints, compact_possible_actions
+from llmmo_harness.schema import (
+    AttackCommand,
+    CommandPlan,
+    MessageCommand,
+    TrainCommand,
+    UpgradeCommand,
+)
+from llmmo_harness.state import (
+    build_planner_context,
+    build_available_actions,
+    compact_possible_actions,
+    has_unread_message,
+)
 import unittest
 
 
@@ -32,6 +43,81 @@ class FilterPlanTests(unittest.TestCase):
 
         self.assertEqual([], filtered.commands)
         self.assertEqual(2, len(dropped))
+
+    def test_blocks_non_diplomacy_when_unread_message(self) -> None:
+        plan = CommandPlan.model_validate(
+            {
+                "schemaVersion": 1,
+                "observedAtTick": 100,
+                "commands": [
+                    {
+                        "type": "train",
+                        "troopType": "spy",
+                        "count": 1,
+                        "reason": "Should drop",
+                    },
+                    {
+                        "type": "message",
+                        "toPlayerId": "00000000-0000-0000-0000-000000000001",
+                        "subject": "Re: hello",
+                        "body": "Acknowledged.",
+                        "reason": "Reply to sender.",
+                    },
+                ],
+            }
+        )
+        possible = {
+            "train": [{"troopType": "spy", "count": 1}],
+            "targets": [],
+            "diplomacy": {
+                "relations": [],
+                "canSendMessage": True,
+                "latestUnreadMessage": {
+                    "id": "msg-1",
+                    "fromPlayerId": "00000000-0000-0000-0000-000000000001",
+                },
+            },
+        }
+
+        filtered, dropped = filter_plan_to_possible_actions(plan, possible)
+
+        self.assertEqual(1, len(filtered.commands))
+        self.assertIsInstance(filtered.commands[0], MessageCommand)
+        self.assertEqual(1, len(dropped))
+
+    def test_blocks_attack_on_ally(self) -> None:
+        plan = CommandPlan.model_validate(
+            {
+                "schemaVersion": 1,
+                "observedAtTick": 100,
+                "commands": [
+                    {
+                        "type": "attack",
+                        "targetCityId": "ally-city",
+                        "troopType": "soldier",
+                        "count": 1,
+                        "reason": "Bad idea",
+                    }
+                ],
+            }
+        )
+        possible = {
+            "targets": [
+                {
+                    "targetCityId": "ally-city",
+                    "targetPlayerId": "player-1",
+                    "canAttack": True,
+                    "canScout": False,
+                    "relation": "ally",
+                }
+            ],
+            "diplomacy": {"relations": []},
+        }
+
+        filtered, dropped = filter_plan_to_possible_actions(plan, possible)
+
+        self.assertEqual([], filtered.commands)
+        self.assertEqual(1, len(dropped))
 
 
 class CommandActionDictTests(unittest.TestCase):
@@ -131,60 +217,63 @@ class CompactPossibleActionsTests(unittest.TestCase):
         self.assertEqual("ally", compact["diplomacy"]["relations"][0]["relation"])
 
 
-class PlannerHintsTests(unittest.TestCase):
-    def test_hints_push_scout_when_hoarding_spies(self) -> None:
-        possible = {
-            "troops": [{"type": "soldier", "count": 1}, {"type": "spy", "count": 7}],
-            "targets": [
+class PlannerContextTests(unittest.TestCase):
+    def test_build_planner_context_includes_buildings_and_unread_reports(self) -> None:
+        city = {
+            "buildings": [
                 {
-                    "targetCityId": "abc",
-                    "targetName": "BrightCrown",
-                    "travelTicks": 34,
-                    "canScout": True,
+                    "type": "bakery",
+                    "level": 2,
+                    "description": "Produces food",
+                    "currentEffect": "+3 food/tick",
+                    "nextLevelEffect": "+4 food/tick",
+                    "productionPerTick": 3,
+                    "productionResource": "food",
+                    "nextUpgradeCost": {"wood": 10, "stone": 10, "gold": 5, "food": 0},
                 }
-            ],
+            ]
         }
-        recent = [
-            {"tick": 1, "action": {"type": "train", "troopType": "spy"}, "reason": "x"},
-            {"tick": 2, "action": {"type": "upgrade", "buildingType": "wall"}, "reason": "y"},
+        possible = {
+            "currentTick": 50,
+            "resources": {"food": 100},
+            "foodProductionPerTick": 3,
+            "foodUpkeepPerTick": 1,
+            "troops": [{"type": "soldier", "count": 1}],
+            "upgrades": [],
+            "train": [],
+            "targets": [],
+            "diplomacy": {"relations": [], "canSendMessage": True, "canDeclareDiplomacy": True},
+        }
+        reports = [
+            {"id": "r1", "type": "scout", "payload": {"seen": True}, "readAt": None},
+            {"id": "r2", "type": "attack", "payload": {}, "readAt": "2026-01-01T00:00:00Z"},
         ]
 
-        hints = build_planner_hints(possible, recent)
+        context = build_planner_context(city, possible, reports, [])
 
-        self.assertTrue(any('"reason"' in hint for hint in hints))
-        self.assertTrue(any("7 spy" in hint for hint in hints))
+        self.assertEqual(1, len(context["cityState"]["buildings"]))
+        self.assertEqual("bakery", context["cityState"]["buildings"][0]["type"])
+        self.assertEqual(1, len(context["unreadReports"]))
+        self.assertEqual("r1", context["unreadReports"][0]["id"])
 
-    def test_hints_prioritize_enemy_attack(self) -> None:
+    def test_available_actions_diplomacy_only_when_unread_message(self) -> None:
         possible = {
-            "troops": [{"type": "soldier", "count": 1}, {"type": "spy", "count": 2}],
-            "targets": [
-                {
-                    "targetCityId": "enemy-city",
-                    "targetName": "Admin",
-                    "travelTicks": 53,
-                    "canAttack": True,
-                    "canScout": True,
-                    "relation": "enemy",
-                }
-            ],
+            "upgrades": [{"buildingType": "wall", "fromLevel": 1, "toLevel": 2}],
+            "train": [{"troopType": "spy", "count": 1}],
+            "targets": [{"targetCityId": "x", "targetPlayerId": "p", "targetName": "T", "distance": 1, "travelTicks": 1}],
+            "diplomacy": {
+                "canSendMessage": True,
+                "canDeclareDiplomacy": False,
+                "latestUnreadMessage": {"id": "m1", "fromPlayerId": "p"},
+            },
         }
 
-        hints = build_planner_hints(possible, [])
+        self.assertTrue(has_unread_message(possible))
+        actions = build_available_actions(possible)
 
-        self.assertTrue(any("declared enemy" in hint for hint in hints))
-        self.assertTrue(any("Admin" in hint for hint in hints))
-        self.assertTrue(hints[1].startswith("Priority this plan: attack declared enemy"))
-
-    def test_hints_include_inventory_count_reminder_without_scout_targets(self) -> None:
-        possible = {
-            "troops": [{"type": "spy", "count": 5}],
-            "targets": [{"targetCityId": "abc", "canScout": False}],
-        }
-
-        hints = build_planner_hints(possible, [])
-
-        self.assertEqual(1, len(hints))
-        self.assertIn("Command count is always exactly 1", hints[0])
+        self.assertTrue(actions["diplomacyOnly"])
+        self.assertNotIn("train", actions)
+        self.assertNotIn("targets", actions)
 
 
 if __name__ == "__main__":

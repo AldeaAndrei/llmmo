@@ -113,6 +113,7 @@ public class DiplomacyService
 
         player.LastMessageSentAtTick = currentTick;
         _db.PlayerMessages.Add(message);
+        await MarkUnreadFromPlayerAsync(authPlayerId, toPlayerId, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         await _db.Entry(message).Reference(m => m.FromPlayer).LoadAsync(cancellationToken);
@@ -178,6 +179,7 @@ public class DiplomacyService
         await EnsureTargetPlayerAsync(authPlayerId, toPlayerId, cancellationToken);
 
         await UpsertMutualRelationAsync(authPlayerId, toPlayerId, relationType, currentTick, cancellationToken);
+        await MarkUnreadFromPlayerAsync(authPlayerId, toPlayerId, cancellationToken);
 
         player.LastDiplomacyDeclaredAtTick = currentTick;
 
@@ -233,6 +235,7 @@ public class DiplomacyService
 
         _db.PlayerRelations.RemoveRange(rows);
         player.LastDiplomacyDeclaredAtTick = currentTick;
+        await MarkUnreadFromPlayerAsync(authPlayerId, toPlayerId, cancellationToken);
 
         if (player.PlayerType == PlayerType.Llm)
         {
@@ -312,9 +315,6 @@ public class DiplomacyService
             return null;
         }
 
-        latestUnread.ReadAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
-
         return new DiplomacyOverviewMessageDto(
             latestUnread.Id,
             latestUnread.FromPlayerId,
@@ -323,6 +323,30 @@ public class DiplomacyService
             latestUnread.Body,
             latestUnread.SentAt,
             latestUnread.SentAtTick);
+    }
+
+    private async Task MarkUnreadFromPlayerAsync(
+        Guid authPlayerId,
+        Guid fromPlayerId,
+        CancellationToken cancellationToken)
+    {
+        var unread = await _db.PlayerMessages
+            .Where(message =>
+                message.ToPlayerId == authPlayerId
+                && message.FromPlayerId == fromPlayerId
+                && message.ReadAt == null)
+            .ToListAsync(cancellationToken);
+
+        if (unread.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        foreach (var message in unread)
+        {
+            message.ReadAt = now;
+        }
     }
 
     public async Task<DiplomacyOverviewDto> GetOverviewAsync(
