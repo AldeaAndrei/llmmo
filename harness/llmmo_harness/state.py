@@ -99,10 +99,13 @@ def build_available_actions(possible: dict) -> dict:
     diplomacy = possible.get("diplomacy") or {}
 
     if has_unread_message(possible):
+        latest = diplomacy.get("latestUnreadMessage") or {}
         return {
             "diplomacyOnly": True,
             "canSendMessage": diplomacy.get("canSendMessage", False),
             "canDeclareDiplomacy": diplomacy.get("canDeclareDiplomacy", False),
+            "mustReplyToPlayerId": latest.get("fromPlayerId"),
+            "mustReplyToPlayerName": latest.get("fromPlayerName"),
         }
 
     return {

@@ -123,6 +123,44 @@ class DiplomacyRecipientValidationTests(unittest.TestCase):
 
         self.assertTrue(command_allowed(command, possible))
 
+    def test_unread_message_restricts_recipient_to_sender(self) -> None:
+        possible = {
+            "targets": [
+                {
+                    "targetCityId": "city-1",
+                    "targetPlayerId": "other-player",
+                    "canAttack": False,
+                    "canScout": False,
+                }
+            ],
+            "diplomacy": {
+                "relations": [],
+                "canSendMessage": True,
+                "latestUnreadMessage": {
+                    "id": "msg-1",
+                    "fromPlayerId": "sender-player",
+                },
+            },
+        }
+
+        to_other = MessageCommand(
+            type="message",
+            toPlayerId="other-player",
+            subject="Hi",
+            body="Unrelated message",
+            reason="Dodging the sender",
+        )
+        to_sender = MessageCommand(
+            type="message",
+            toPlayerId="sender-player",
+            subject="Re: your message",
+            body="Acknowledged.",
+            reason="Replying to the sender",
+        )
+
+        self.assertFalse(command_allowed(to_other, possible))
+        self.assertTrue(command_allowed(to_sender, possible))
+
 
 if __name__ == "__main__":
     unittest.main()

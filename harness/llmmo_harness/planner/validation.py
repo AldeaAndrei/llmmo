@@ -53,12 +53,21 @@ def _target_player_ids(possible: dict) -> set[str]:
     }
 
 
-def _diplomacy_recipient_ids(possible: dict) -> set[str]:
-    recipient_ids = _target_player_ids(possible) | _relation_player_ids(possible)
+def _unread_sender_id(possible: dict) -> str | None:
     latest = (possible.get("diplomacy") or {}).get("latestUnreadMessage")
     if isinstance(latest, dict) and latest.get("fromPlayerId"):
-        recipient_ids.add(str(latest["fromPlayerId"]).lower())
-    return recipient_ids
+        return str(latest["fromPlayerId"]).lower()
+    return None
+
+
+def _diplomacy_recipient_ids(possible: dict) -> set[str]:
+    # When there is an unread message, the only valid recipient is the sender,
+    # so a reply actually clears the inbox and unblocks normal actions.
+    sender_id = _unread_sender_id(possible)
+    if sender_id is not None:
+        return {sender_id}
+
+    return _target_player_ids(possible) | _relation_player_ids(possible)
 
 
 def command_allowed(
