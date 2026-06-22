@@ -38,8 +38,37 @@ export function buildTerrainLayer(sprites, worldSeed, mapSize, cellSize) {
   return canvas
 }
 
+const terrainGridCache = new Map()
+
+/**
+ * Per-tile terrain type lookup (mapSize x mapSize), so the viewport renderer can
+ * redraw only the visible tiles from the hi-res source sprites when zoomed in,
+ * instead of upscaling the prebaked overview layer. Cached per world/size.
+ */
+export function buildTerrainGrid(worldSeed, mapSize) {
+  const key = `${worldSeed}:${mapSize}`
+  const cached = terrainGridCache.get(key)
+  if (cached) {
+    return cached
+  }
+
+  const noise2D = createSeededNoise2D(worldSeed)
+  const grid = new Array(mapSize)
+  for (let y = 0; y < mapSize; y += 1) {
+    const row = new Array(mapSize)
+    for (let x = 0; x < mapSize; x += 1) {
+      row[x] = terrainTypeAt(noise2D, x, y)
+    }
+    grid[y] = row
+  }
+
+  terrainGridCache.set(key, grid)
+  return grid
+}
+
 export function clearTerrainCache() {
   terrainLayerCache.clear()
+  terrainGridCache.clear()
 }
 
 export function hashString(value) {
