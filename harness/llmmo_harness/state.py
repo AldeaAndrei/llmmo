@@ -118,7 +118,10 @@ def build_available_actions(possible: dict) -> dict:
             for upgrade in possible.get("upgrades", [])
         ],
         "train": [
-            {"troopType": option["troopType"], "count": option["count"]}
+            {
+                "troopType": option["troopType"],
+                "maxCount": option.get("maxCount", option.get("count", 1)),
+            }
             for option in possible.get("train", [])
         ],
         "targets": compact_targets(possible.get("targets", [])),
@@ -168,7 +171,10 @@ def compact_possible_actions(actions: dict) -> dict:
             for upgrade in actions.get("upgrades", [])
         ],
         "train": [
-            {"troopType": option["troopType"], "count": option["count"]}
+            {
+                "troopType": option["troopType"],
+                "maxCount": option.get("maxCount", option.get("count", 1)),
+            }
             for option in actions.get("train", [])
         ],
         "targets": compact_targets(actions.get("targets", [])),

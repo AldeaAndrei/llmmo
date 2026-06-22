@@ -107,11 +107,11 @@ def command_allowed(
         return command.buildingType.lower() in allowed
 
     if isinstance(command, TrainCommand):
-        allowed = {
-            (entry["troopType"].lower(), int(entry["count"]))
-            for entry in possible.get("train", [])
-        }
-        return (command.troopType.lower(), command.count) in allowed
+        for entry in possible.get("train", []):
+            if str(entry.get("troopType", "")).lower() == command.troopType.lower():
+                max_count = max(1, int(entry.get("maxCount", entry.get("count", 1))))
+                return 1 <= command.count <= max_count
+        return False
 
     target_id = command.targetCityId.lower()
     for entry in possible.get("targets", []):

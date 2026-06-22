@@ -1,4 +1,5 @@
 using llmmo.Api;
+using llmmo.Api.Buildings;
 using llmmo.Entities;
 
 namespace CalcTests;
@@ -57,6 +58,21 @@ public class PossibleActionsCalculatorTests
         Assert.Equal(2, train.Count);
         Assert.Contains(train, option => option.TroopType == "soldier" && option.Count == 1);
         Assert.Contains(train, option => option.TroopType == "spy" && option.Count == 1);
+    }
+
+    [Fact]
+    public void GetAffordableTrain_ReportsMaxAffordableBatchUpToCapacity()
+    {
+        var city = CreateCity(wood: 1_000_000, stone: 1_000_000, gold: 1_000_000, food: 1_000_000);
+        city.Buildings = [new Building { Type = "barracks", Level = 8 }];
+        city.Troops = [];
+
+        var train = PossibleActionsCalculator.GetAffordableTrain(city, trainSlotAvailable: true);
+
+        var soldier = Assert.Single(train, option => option.TroopType == "soldier");
+        Assert.Equal(1, soldier.Count);
+        Assert.Equal(BuildingCatalog.TrainCapacityAtLevel(8), soldier.MaxCount);
+        Assert.True(soldier.MaxCost.Gold >= soldier.Cost.Gold);
     }
 
     [Fact]

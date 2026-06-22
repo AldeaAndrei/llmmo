@@ -27,7 +27,7 @@ class NormalizeCommandTests(unittest.TestCase):
         self.assertTrue(normalized["reason"])
         self.assertTrue(any("default reason" in repair for repair in repairs))
 
-    def test_clamps_train_count_to_one(self) -> None:
+    def test_clamps_train_count_to_one_without_train_options(self) -> None:
         normalized, repairs = normalize_command(
             {
                 "type": "train",
@@ -40,6 +40,36 @@ class NormalizeCommandTests(unittest.TestCase):
 
         self.assertEqual(1, normalized["count"])
         self.assertTrue(any("clamped" in repair for repair in repairs))
+
+    def test_clamps_train_count_to_max_count(self) -> None:
+        possible = {"train": [{"troopType": "soldier", "maxCount": 12}]}
+        normalized, repairs = normalize_command(
+            {
+                "type": "train",
+                "troopType": "soldier",
+                "count": 50,
+                "reason": "Rebuild army",
+            },
+            possible,
+        )
+
+        self.assertEqual(12, normalized["count"])
+        self.assertTrue(any("clamped train count 50 to 12" in repair for repair in repairs))
+
+    def test_keeps_train_count_within_max(self) -> None:
+        possible = {"train": [{"troopType": "soldier", "maxCount": 12}]}
+        normalized, repairs = normalize_command(
+            {
+                "type": "train",
+                "troopType": "soldier",
+                "count": 8,
+                "reason": "Rebuild army",
+            },
+            possible,
+        )
+
+        self.assertEqual(8, normalized["count"])
+        self.assertFalse(any("clamped" in repair for repair in repairs))
 
     def test_strips_extra_upgrade_fields(self) -> None:
         normalized, repairs = normalize_command(

@@ -9,7 +9,9 @@ public record PossibleUpgradeDto(
 public record PossibleTrainDto(
     string TroopType,
     int Count,
-    BuildingUpgradeCostDto Cost);
+    int MaxCount,
+    BuildingUpgradeCostDto Cost,
+    BuildingUpgradeCostDto MaxCost);
 
 public record PossibleTargetDto(
     Guid TargetCityId,

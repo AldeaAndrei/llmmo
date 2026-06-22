@@ -23,6 +23,16 @@ def _target_name_for_id(possible: dict, target_city_id: str) -> str | None:
     return None
 
 
+def _max_train_count(possible: dict, troop_type: str | None) -> int:
+    if not troop_type:
+        return 1
+    troop = troop_type.lower()
+    for entry in possible.get("train") or []:
+        if str(entry.get("troopType", "")).lower() == troop:
+            return max(1, int(entry.get("maxCount", entry.get("count", 1))))
+    return 1
+
+
 def _default_reason(command: dict, possible: dict) -> str:
     command_type = command.get("type")
     if command_type == "upgrade":
@@ -68,11 +78,23 @@ def normalize_command(command: dict, possible: dict) -> tuple[dict, list[str]]:
             normalized.pop(key, None)
         repairs.append(f"stripped extra fields from {command_type}: {', '.join(stripped)}")
 
-    if command_type in {"train", "attack"}:
+    if command_type == "attack":
         count = normalized.get("count", 1)
         if count != 1:
             normalized["count"] = 1
-            repairs.append(f"clamped {command_type} count {count} to 1")
+            repairs.append(f"clamped attack count {count} to 1")
+
+    if command_type == "train":
+        raw_count = normalized.get("count", 1)
+        try:
+            count = int(raw_count)
+        except (TypeError, ValueError):
+            count = 1
+        max_count = _max_train_count(possible, normalized.get("troopType"))
+        clamped = max(1, min(count, max_count))
+        if clamped != raw_count:
+            normalized["count"] = clamped
+            repairs.append(f"clamped train count {raw_count} to {clamped}")
 
     reason = normalized.get("reason")
     if not isinstance(reason, str) or not reason.strip():

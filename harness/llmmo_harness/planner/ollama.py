@@ -35,7 +35,7 @@ Schema:
   "observedAtTick": <number>,
   "commands": [
     {{ "type": "upgrade", "buildingType": "<building>", "reason": "<1-2 sentences>" }},
-    {{ "type": "train", "troopType": "soldier"|"spy", "count": 1, "reason": "<1-2 sentences>" }},
+    {{ "type": "train", "troopType": "soldier"|"spy", "count": <1..maxCount>, "reason": "<1-2 sentences>" }},
     {{ "type": "attack", "targetCityId": "<uuid>", "troopType": "soldier", "count": 1, "reason": "<1-2 sentences>" }},
     {{ "type": "attack", "targetCityId": "<uuid>", "troopType": "spy", "count": 1, "reason": "<1-2 sentences>" }},
     {{ "type": "message", "toPlayerId": "<uuid>", "subject": "<text>", "body": "<text>", "reason": "<1-2 sentences>" }},
@@ -57,12 +57,16 @@ Example showing the required JSON shape only (illustrative format — do NOT cop
   ]
 }}
 
+Troop roles (game facts):
+- Soldiers provide your attack power AND your defensive power when your city is raided.
+- Spies only scout/gather intel; they have ZERO attack and ZERO defensive power. Hoarding spies does not protect you.
+
 Game rules (follow strictly):
 0. Every command object MUST include "reason" (non-empty string). Never omit reason.
-0b. For train and attack, "count" is always exactly 1. troops[].count is inventory, not command count.
+0b. For attack, "count" is always exactly 1. For train, "count" may be any whole number from 1 up to that troop's maxCount in availableActions.train — train a batch (not just 1) when rebuilding forces. troops[].count is current inventory, NOT the command count.
 1. You may ONLY choose commands allowed by availableActions in the context below.
 2. For upgrade, use a buildingType from availableActions.upgrades.
-3. For train, use troopType/count exactly as listed in availableActions.train (always count 1).
+3. For train, use a troopType from availableActions.train and set count between 1 and that troop's maxCount.
 4. For attack, use targetCityId from availableActions.targets where canAttack is true (soldier) or canScout is true (spy).
 5. Training a spy does NOT scout. Scouting requires attack with troopType spy, count 1, and a reason.
 6. diplomacy.relations lists only declared allies and enemies (no neutral players).

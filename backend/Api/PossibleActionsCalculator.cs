@@ -79,16 +79,32 @@ public static class PossibleActionsCalculator
                 continue;
             }
 
-            var cost = TroopCatalog.TrainCostForCount(troopType, TrainCount);
-            if (!CityResources.CanAfford(city, cost))
+            var unitCost = TroopCatalog.TrainCostForCount(troopType, TrainCount);
+            if (!CityResources.CanAfford(city, unitCost))
             {
                 continue;
+            }
+
+            // Largest batch the city can both fit (barracks capacity) and afford.
+            var maxCount = TrainCount;
+            var maxCost = unitCost;
+            for (var count = capacity; count > TrainCount; count--)
+            {
+                var cost = TroopCatalog.TrainCostForCount(troopType, count);
+                if (CityResources.CanAfford(city, cost))
+                {
+                    maxCount = count;
+                    maxCost = cost;
+                    break;
+                }
             }
 
             options.Add(new PossibleTrainDto(
                 troopType,
                 TrainCount,
-                new BuildingUpgradeCostDto(cost.Wood, cost.Stone, cost.Gold, cost.Food)));
+                maxCount,
+                new BuildingUpgradeCostDto(unitCost.Wood, unitCost.Stone, unitCost.Gold, unitCost.Food),
+                new BuildingUpgradeCostDto(maxCost.Wood, maxCost.Stone, maxCost.Gold, maxCost.Food)));
         }
 
         return options;

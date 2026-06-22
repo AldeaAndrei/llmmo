@@ -85,6 +85,39 @@ class FilterPlanTests(unittest.TestCase):
         self.assertIsInstance(filtered.commands[0], MessageCommand)
         self.assertEqual(1, len(dropped))
 
+    def test_train_count_within_max_count_is_allowed(self) -> None:
+        plan = CommandPlan.model_validate(
+            {
+                "schemaVersion": 1,
+                "observedAtTick": 100,
+                "commands": [
+                    {
+                        "type": "train",
+                        "troopType": "soldier",
+                        "count": 10,
+                        "reason": "Rebuild garrison.",
+                    },
+                    {
+                        "type": "train",
+                        "troopType": "soldier",
+                        "count": 99,
+                        "reason": "Over the cap.",
+                    },
+                ],
+            }
+        )
+        possible = {
+            "train": [{"troopType": "soldier", "maxCount": 12}],
+            "targets": [],
+            "diplomacy": {"relations": []},
+        }
+
+        filtered, dropped = filter_plan_to_possible_actions(plan, possible)
+
+        self.assertEqual(1, len(filtered.commands))
+        self.assertEqual(10, filtered.commands[0].count)
+        self.assertEqual(1, len(dropped))
+
     def test_blocks_attack_on_ally(self) -> None:
         plan = CommandPlan.model_validate(
             {
@@ -209,7 +242,7 @@ class CompactPossibleActionsTests(unittest.TestCase):
         self.assertEqual(100, compact["currentTick"])
         self.assertEqual([{"buildingType": "bakery", "fromLevel": 1, "toLevel": 2}], compact["upgrades"])
         self.assertNotIn("cost", compact["upgrades"][0])
-        self.assertEqual([{"troopType": "soldier", "count": 1}], compact["train"])
+        self.assertEqual([{"troopType": "soldier", "maxCount": 1}], compact["train"])
         self.assertEqual("abc", compact["targets"][0]["targetCityId"])
         self.assertTrue(compact["diplomacy"]["canSendMessage"])
         self.assertFalse(compact["diplomacy"]["canDeclareDiplomacy"])

@@ -51,7 +51,7 @@ class UpgradeCommand(BaseModel):
 class TrainCommand(BaseModel):
     type: Literal["train"] = "train"
     troopType: str
-    count: int = 1
+    count: int = Field(default=1, ge=1)
     reason: str = Field(min_length=1, max_length=500)
 
     @field_validator("troopType")
@@ -59,13 +59,6 @@ class TrainCommand(BaseModel):
     def validate_troop(cls, value: str) -> str:
         if value not in TROOP_TYPES:
             raise ValueError(f"Invalid troopType: {value}")
-        return value
-
-    @field_validator("count")
-    @classmethod
-    def validate_count(cls, value: int) -> int:
-        if value != 1:
-            raise ValueError("count must be 1 for train commands")
         return value
 
 
