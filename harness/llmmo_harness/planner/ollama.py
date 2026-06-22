@@ -45,17 +45,14 @@ Schema:
   ]
 }}
 
-Example valid plan (scout):
+Example showing the required JSON shape only (illustrative format — do NOT copy this action or reason; choose commands from availableActions):
 {{
   "schemaVersion": 1,
-  "observedAtTick": 100,
+  "observedAtTick": <number>,
   "commands": [
     {{
-      "type": "attack",
-      "targetCityId": "00000000-0000-0000-0000-000000000001",
-      "troopType": "spy",
-      "count": 1,
-      "reason": "Scout the nearest city before training more troops."
+      "type": "<one of the command types above>",
+      "reason": "<concise justification specific to this tick's state>"
     }}
   ]
 }}
