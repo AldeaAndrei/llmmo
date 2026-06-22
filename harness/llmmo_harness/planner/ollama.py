@@ -14,6 +14,7 @@ from llmmo_harness.state import (
     SOCIAL_COMMAND_TYPES,
     STRATEGIC_COMMAND_TYPES,
     build_building_context,
+    build_social_alert,
     build_social_context,
     build_strategic_alert,
     build_strategic_context,
@@ -46,12 +47,43 @@ Temperament: neutral but resolute. You do not sit idle when train or valid attac
 SOCIAL_PERSONALITY_PROMPT = """You are the SOCIAL ENVOY for a tick-based strategy city. You focus only on diplomacy, messaging, and interpreting reports.
 
 Your priorities, in order:
-1. Reply. Answer every unread message in your inbox.
+1. Reply. Answer every unread message in your inbox immediately.
 2. Relate. Set ally or enemy relations when it serves the city's interests.
 3. Inform. Use unread reports to inform your tone and diplomatic stance.
-4. Reach out. Message any player when you have something worth saying and message cooldown allows it.
+4. Reach out. Message any player when message cooldown allows and you have something to say.
 
-Temperament: articulate and bold. You may message or declare relations with any player in the players list. An empty command is only correct when availableActions blocks all diplomacy and you have no unread messages requiring reply."""
+Temperament: articulate and bold. You do not stay silent when canSendMessage is true. An empty command is only correct when both diplomacy cooldowns block you."""
+
+SOCIAL_RULES_PROMPT = """You are the SOCIAL ENVOY. You decide messages and diplomacy ONLY.
+You see socialSummary, replyTarget (when inbox is blocked), players, unread messages, and unread reports. You do not control buildings, troops, or attacks.
+
+Output ONLY valid JSON (no markdown, no commentary outside the JSON).
+
+Schema:
+{{
+  "schemaVersion": 1,
+  "observedAtTick": <number>,
+  "commands": [
+    {{ "type": "message", "toPlayerId": "<uuid>", "subject": "<text>", "body": "<text>", "reason": "<1-2 sentences>" }},
+    {{ "type": "ally", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }},
+    {{ "type": "enemy", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }},
+    {{ "type": "clear_relation", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }}
+  ]
+}}
+
+Example reply to unread (use replyTarget.toPlayerId and subject "Re: <their subject>"):
+{{"schemaVersion":1,"observedAtTick":71521,"commands":[{{"type":"message","toPlayerId":"<uuid>","subject":"Re: Attack","body":"We received your message.","reason":"Replying to the war declaration."}}]}}
+
+Rules (follow strictly):
+0. Every command MUST include a non-empty "reason".
+1. Return 0 or 1 commands. Return "commands": [] only when availableActions.canSendMessage and availableActions.canDeclareDiplomacy are both false.
+2. If unreadMessages is non-empty and canSendMessage is true, you MUST return a message to replyTarget.toPlayerId (or mustReplyToPlayerId). Use subject "Re: <their subject>". Do not return [].
+3. If unreadMessages is empty, canSendMessage is true, and socialSummary.unreadDefeatCount > 0, you MUST message a declared enemy from socialSummary.declaredEnemies or a human from socialSummary.humanPlayers. Do not return [].
+4. If unreadMessages is empty and canSendMessage is true, you MUST message any player from players. Do not return [] when message cooldown is ready.
+5. Only send a message when canSendMessage is true. Only declare ally/enemy/clear_relation when canDeclareDiplomacy is true.
+6. When diplomacyOnly is true, your command MUST be type "message" to mustReplyToPlayerId unless canSendMessage is false.
+7. Use any playerId from players when cooldowns allow.
+8. Do not return [] because you messaged recently. Each reason must be specific to this tick."""
 
 BUILDING_RULES_PROMPT = """You are the BUILDING MANAGER. You decide building upgrades ONLY.
 You see your resources and your buildings. You do not control troops, attacks, or diplomacy.
@@ -106,32 +138,6 @@ Rules (follow strictly):
 6. Training a spy does NOT scout. Scouting requires attack with troopType spy, count 1.
 7. Never attack a target whose relation is "ally".
 8. Avoid repeating the same command type AND troopType/target as your most recent entry in recentDecisions (e.g. do not train spy again right after train spy). Training soldiers after training spies, or attacking after training, is encouraged. Do not return [] merely because you trained recently — choose a different valid action if one exists. Each reason must be specific to this tick."""
-
-SOCIAL_RULES_PROMPT = """You are the SOCIAL ENVOY. You decide messages and diplomacy ONLY.
-You see all players, unread messages, unread reports, and diplomacy cooldowns. You do not control buildings, troops, or attacks.
-
-Output ONLY valid JSON (no markdown, no commentary outside the JSON).
-
-Schema:
-{{
-  "schemaVersion": 1,
-  "observedAtTick": <number>,
-  "commands": [
-    {{ "type": "message", "toPlayerId": "<uuid>", "subject": "<text>", "body": "<text>", "reason": "<1-2 sentences>" }},
-    {{ "type": "ally", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }},
-    {{ "type": "enemy", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }},
-    {{ "type": "clear_relation", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }}
-  ]
-}}
-
-Rules (follow strictly):
-0. Every command MUST include a non-empty "reason".
-1. Return 0 or 1 commands. Return "commands": [] only when availableActions.canSendMessage and availableActions.canDeclareDiplomacy are both false AND unreadMessages is empty.
-2. You may use any playerId from players for message/ally/enemy/clear_relation when cooldowns allow.
-3. Only send a message when availableActions.canSendMessage is true. Only declare ally/enemy/clear_relation when availableActions.canDeclareDiplomacy is true.
-4. When availableActions.diplomacyOnly is true, only message/ally/enemy/clear_relation are valid, and toPlayerId MUST equal availableActions.mustReplyToPlayerId (reply to the sender of an unread message).
-5. When unreadMessages is non-empty and canSendMessage is true, prefer replying to an unread sender before cold-messaging someone else.
-6. Avoid repeating the same command type AND toPlayerId as your most recent entry in recentDecisions unless still clearly warranted. Each reason must be specific to this tick."""
 
 BUILDING_SYSTEM_PROMPT = f"{BUILDING_PERSONALITY_PROMPT}\n\n{BUILDING_RULES_PROMPT}"
 STRATEGIC_SYSTEM_PROMPT = f"{STRATEGIC_PERSONALITY_PROMPT}\n\n{STRATEGIC_RULES_PROMPT}"
@@ -354,6 +360,11 @@ class OllamaPlanner:
                 auth_player_id,
                 social_recent,
             )
+            social_alert = build_social_alert(
+                social_context["socialSummary"],
+                social_context["availableActions"],
+                social_context.get("replyTarget"),
+            )
             commands.extend(
                 self._run_agent(
                     label="social agent",
@@ -361,6 +372,7 @@ class OllamaPlanner:
                     context=social_context,
                     observed_tick=observed_tick,
                     allowed_types=SOCIAL_COMMAND_TYPES,
+                    user_suffix=social_alert,
                 )
             )
         else:

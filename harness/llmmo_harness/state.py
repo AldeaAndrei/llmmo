@@ -283,6 +283,8 @@ def compact_social_report(report: dict) -> dict:
     if report.get("type") == "attack":
         entry["outcome"] = payload.get("outcome")
         entry["perspective"] = payload.get("perspective")
+        if report.get("sourceCityId"):
+            entry["sourceCityId"] = report.get("sourceCityId")
         attacker = payload.get("attacker") or {}
         defender = payload.get("defender") or {}
         if payload.get("perspective") == "defender":
@@ -334,6 +336,126 @@ def build_social_actions(possible: dict) -> dict:
     return actions
 
 
+def _social_defeat_count(reports: list[dict]) -> int:
+    return sum(
+        1
+        for report in reports
+        if report.get("type") == "attack"
+        and report.get("perspective") == "defender"
+        and report.get("outcome") == "defeat"
+    )
+
+
+def build_social_summary(
+    merged_players: list[dict],
+    unread_messages: list[dict],
+    unread_reports: list[dict],
+) -> dict:
+    summary: dict = {
+        "unreadMessageCount": len(unread_messages),
+        "unreadDefeatCount": _social_defeat_count(unread_reports),
+    }
+    enemies = [
+        player["name"]
+        for player in merged_players
+        if player.get("relation") == "enemy" and player.get("name")
+    ]
+    humans = [
+        player["name"]
+        for player in merged_players
+        if player.get("playerType") == "human" and player.get("name")
+    ]
+    if enemies:
+        summary["declaredEnemies"] = enemies
+    if humans:
+        summary["humanPlayers"] = humans
+    return summary
+
+
+def build_reply_target(
+    unread_messages: list[dict],
+    actions: dict,
+) -> dict | None:
+    if not unread_messages:
+        return None
+    first = unread_messages[0]
+    return {
+        "toPlayerId": actions.get("mustReplyToPlayerId") or first.get("fromPlayerId"),
+        "toPlayerName": actions.get("mustReplyToPlayerName")
+        or first.get("fromPlayerName"),
+        "subject": first.get("subject"),
+        "body": first.get("body"),
+    }
+
+
+def slim_social_players(
+    merged_players: list[dict],
+    actions: dict,
+    unread_messages: list[dict],
+) -> list[dict]:
+    if not actions.get("diplomacyOnly"):
+        return merged_players
+
+    keep_ids: set[str] = set()
+    reply_id = actions.get("mustReplyToPlayerId")
+    if reply_id:
+        keep_ids.add(str(reply_id).lower())
+    for message in unread_messages:
+        from_player_id = message.get("fromPlayerId")
+        if from_player_id:
+            keep_ids.add(str(from_player_id).lower())
+
+    slimmed: list[dict] = []
+    seen: set[str] = set()
+    for player in merged_players:
+        player_id = str(player.get("playerId", "")).lower()
+        if not player_id or player_id in seen:
+            continue
+        include = (
+            player_id in keep_ids
+            or player.get("relation") == "enemy"
+            or player.get("playerType") == "human"
+        )
+        if include:
+            seen.add(player_id)
+            slimmed.append(player)
+    return slimmed if slimmed else merged_players[:5]
+
+
+def build_social_alert(
+    social_summary: dict,
+    actions: dict,
+    reply_target: dict | None,
+) -> str | None:
+    if reply_target and actions.get("canSendMessage"):
+        name = reply_target.get("toPlayerName") or "sender"
+        player_id = reply_target.get("toPlayerId")
+        return (
+            f"Alert: Reply now — send a message to toPlayerId={player_id} ({name})."
+        )
+
+    if actions.get("canSendMessage"):
+        defeats = int(social_summary.get("unreadDefeatCount", 0))
+        enemies = social_summary.get("declaredEnemies") or []
+        humans = social_summary.get("humanPlayers") or []
+        if defeats > 0 and enemies:
+            return (
+                f"Alert: {defeats} unread defeat(s) — message declared enemy "
+                f"{enemies[0]}."
+            )
+        if defeats > 0 and humans:
+            return (
+                f"Alert: {defeats} unread defeat(s) — message a human player "
+                f"from players."
+            )
+        return "Alert: Message cooldown ready — message a player from players."
+
+    if actions.get("canDeclareDiplomacy"):
+        return "Alert: Diplomacy cooldown ready — set a relation if you have a stance."
+
+    return None
+
+
 def build_social_context(
     possible: dict,
     players: list[dict],
@@ -343,15 +465,27 @@ def build_social_context(
     auth_player_id: str,
     recent: list[dict],
 ) -> dict:
-    """Context for the Social agent: players, messages, compact reports — no economy or troops."""
-    return {
+    """Context for the Social agent: summary, reply target, slim players when inbox blocked."""
+    merged_players = merge_players_with_relations(players, relations)
+    unread_messages = compact_unread_messages(messages, auth_player_id)
+    unread_reports = compact_social_reports(reports)
+    actions = build_social_actions(possible)
+    reply_target = build_reply_target(unread_messages, actions)
+
+    context: dict = {
         "currentTick": possible.get("currentTick"),
-        "players": merge_players_with_relations(players, relations),
-        "unreadMessages": compact_unread_messages(messages, auth_player_id),
-        "unreadReports": compact_social_reports(reports),
-        "availableActions": build_social_actions(possible),
+        "socialSummary": build_social_summary(
+            merged_players, unread_messages, unread_reports
+        ),
+        "players": slim_social_players(merged_players, actions, unread_messages),
+        "unreadMessages": unread_messages,
+        "unreadReports": unread_reports,
+        "availableActions": actions,
         "recentDecisions": recent,
     }
+    if reply_target is not None:
+        context["replyTarget"] = reply_target
+    return context
 
 
 def enrich_possible_for_validation(

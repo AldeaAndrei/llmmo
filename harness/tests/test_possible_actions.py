@@ -13,6 +13,7 @@ from llmmo_harness.state import (
     build_available_actions,
     build_building_context,
     build_planner_context,
+    build_social_alert,
     build_social_context,
     build_strategic_alert,
     build_strategic_context,
@@ -489,11 +490,66 @@ class AgentContextSliceTests(unittest.TestCase):
             [],
         )
 
+        self.assertIn("socialSummary", context)
+        self.assertIn("replyTarget", context)
+        self.assertEqual(1, context["socialSummary"]["unreadMessageCount"])
         self.assertEqual(2, len(context["players"]))
         self.assertEqual("enemy", context["players"][1]["relation"])
         self.assertEqual(1, len(context["unreadMessages"]))
         self.assertEqual("Beta", context["unreadMessages"][0]["fromPlayerName"])
         self.assertTrue(context["availableActions"]["canSendMessage"])
+
+    def test_social_alert_when_unread_message(self) -> None:
+        summary = {"unreadMessageCount": 1, "unreadDefeatCount": 0}
+        actions = {
+            "canSendMessage": True,
+            "diplomacyOnly": True,
+            "mustReplyToPlayerId": "p2",
+            "mustReplyToPlayerName": "Beta",
+        }
+        reply = {
+            "toPlayerId": "p2",
+            "toPlayerName": "Beta",
+            "subject": "Hello",
+            "body": "Truce?",
+        }
+
+        alert = build_social_alert(summary, actions, reply)
+
+        self.assertIn("Reply now", alert or "")
+        self.assertIn("p2", alert or "")
+
+    def test_social_context_slims_players_when_diplomacy_only(self) -> None:
+        possible = self._possible()
+        possible["diplomacy"]["latestUnreadMessage"] = {
+            "id": "m1",
+            "fromPlayerId": "p2",
+            "fromPlayerName": "Beta",
+        }
+        players = [
+            {"id": "p1", "name": "Alpha", "playerType": "llm"},
+            {"id": "p2", "name": "Beta", "playerType": "human"},
+            {"id": "p3", "name": "Gamma", "playerType": "llm"},
+        ]
+        messages = [
+            {
+                "id": "m1",
+                "fromPlayerId": "p2",
+                "fromPlayerName": "Beta",
+                "toPlayerId": "me",
+                "subject": "Hi",
+                "body": "Hello",
+                "sentAtTick": 1,
+                "readAt": None,
+            }
+        ]
+
+        context = build_social_context(
+            possible, players, [], messages, [], "me", []
+        )
+
+        self.assertLessEqual(len(context["players"]), 2)
+        self.assertIn("replyTarget", context)
 
     def test_social_actions_diplomacy_only_when_unread_message(self) -> None:
         possible = self._possible()
