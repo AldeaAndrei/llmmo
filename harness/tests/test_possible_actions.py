@@ -1,3 +1,5 @@
+import json
+
 from llmmo_harness.executor import command_action_dict
 from llmmo_harness.planner.validation import filter_plan_to_possible_actions
 from llmmo_harness.schema import (
@@ -8,8 +10,10 @@ from llmmo_harness.schema import (
     UpgradeCommand,
 )
 from llmmo_harness.state import (
-    build_planner_context,
     build_available_actions,
+    build_building_context,
+    build_planner_context,
+    build_strategic_context,
     compact_possible_actions,
     has_unread_message,
 )
@@ -305,6 +309,80 @@ class PlannerContextTests(unittest.TestCase):
         actions = build_available_actions(possible)
 
         self.assertTrue(actions["diplomacyOnly"])
+        self.assertNotIn("train", actions)
+        self.assertNotIn("targets", actions)
+
+
+class AgentContextSliceTests(unittest.TestCase):
+    def _possible(self) -> dict:
+        return {
+            "currentTick": 200,
+            "resources": {"wood": 100, "stone": 100, "gold": 100, "food": 100},
+            "foodProductionPerTick": 10,
+            "foodUpkeepPerTick": 3,
+            "troops": [{"type": "spy", "count": 4}],
+            "upgrades": [{"buildingType": "wall", "fromLevel": 2, "toLevel": 3}],
+            "train": [{"troopType": "soldier", "maxCount": 8}],
+            "targets": [
+                {
+                    "targetCityId": "c1",
+                    "targetPlayerId": "p1",
+                    "targetName": "Foe",
+                    "distance": 5,
+                    "travelTicks": 5,
+                    "canAttack": False,
+                    "canScout": True,
+                }
+            ],
+            "diplomacy": {
+                "relations": [],
+                "canSendMessage": True,
+                "canDeclareDiplomacy": True,
+            },
+        }
+
+    def test_building_context_excludes_troops_and_diplomacy(self) -> None:
+        city = {"buildings": [{"type": "wall", "level": 2, "description": "d"}]}
+
+        context = build_building_context(city, self._possible(), [])
+
+        self.assertIn("resources", context["cityState"])
+        self.assertIn("buildings", context["cityState"])
+        self.assertEqual(10, context["cityState"]["foodProductionPerTick"])
+        self.assertIn("upgrades", context["availableActions"])
+        self.assertNotIn("train", context["availableActions"])
+        self.assertNotIn("targets", context["availableActions"])
+        # No troop/diplomacy/report leakage anywhere in the slice.
+        blob = json.dumps(context)
+        self.assertNotIn("troops", blob)
+        self.assertNotIn("diplomacy", blob)
+
+    def test_strategic_context_excludes_resources_and_buildings(self) -> None:
+        context = build_strategic_context(self._possible(), [], [])
+
+        self.assertIn("troops", context)
+        self.assertIn("diplomacy", context)
+        self.assertIn("unreadReports", context)
+        self.assertIn("train", context["availableActions"])
+        self.assertIn("targets", context["availableActions"])
+        blob = json.dumps(context)
+        self.assertNotIn("buildings", blob)
+        self.assertNotIn("resources", blob)
+        self.assertNotIn("upgrades", blob)
+
+    def test_strategic_context_diplomacy_only_when_unread_message(self) -> None:
+        possible = self._possible()
+        possible["diplomacy"]["latestUnreadMessage"] = {
+            "id": "m1",
+            "fromPlayerId": "p1",
+            "fromPlayerName": "Foe",
+        }
+
+        context = build_strategic_context(possible, [], [])
+        actions = context["availableActions"]
+
+        self.assertTrue(actions["diplomacyOnly"])
+        self.assertEqual("p1", actions["mustReplyToPlayerId"])
         self.assertNotIn("train", actions)
         self.assertNotIn("targets", actions)
 

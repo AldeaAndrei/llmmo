@@ -128,8 +128,83 @@ def build_available_actions(possible: dict) -> dict:
     }
 
 
+BUILDING_COMMAND_TYPES = frozenset({"upgrade"})
+STRATEGIC_COMMAND_TYPES = frozenset(
+    {"train", "attack", "message", "ally", "enemy", "clear_relation"}
+)
+
+
 def unread_reports(reports: list[dict]) -> list[dict]:
     return [report for report in reports if report.get("readAt") is None]
+
+
+def build_building_context(
+    city: dict,
+    possible: dict,
+    recent: list[dict],
+) -> dict:
+    """Context for the Building Manager agent: resources + buildings only."""
+    return {
+        "cityState": {
+            "currentTick": possible.get("currentTick"),
+            "resources": possible.get("resources"),
+            "foodProductionPerTick": possible.get("foodProductionPerTick"),
+            "foodUpkeepPerTick": possible.get("foodUpkeepPerTick"),
+            "buildings": compact_buildings(city.get("buildings", [])),
+        },
+        "availableActions": {
+            "upgrades": [
+                {
+                    "buildingType": upgrade["buildingType"],
+                    "fromLevel": upgrade["fromLevel"],
+                    "toLevel": upgrade["toLevel"],
+                }
+                for upgrade in possible.get("upgrades", [])
+            ],
+        },
+        "recentDecisions": recent,
+    }
+
+
+def build_strategic_actions(possible: dict) -> dict:
+    diplomacy = possible.get("diplomacy") or {}
+
+    if has_unread_message(possible):
+        latest = diplomacy.get("latestUnreadMessage") or {}
+        return {
+            "diplomacyOnly": True,
+            "canSendMessage": diplomacy.get("canSendMessage", False),
+            "canDeclareDiplomacy": diplomacy.get("canDeclareDiplomacy", False),
+            "mustReplyToPlayerId": latest.get("fromPlayerId"),
+            "mustReplyToPlayerName": latest.get("fromPlayerName"),
+        }
+
+    return {
+        "train": [
+            {
+                "troopType": option["troopType"],
+                "maxCount": option.get("maxCount", option.get("count", 1)),
+            }
+            for option in possible.get("train", [])
+        ],
+        "targets": compact_targets(possible.get("targets", [])),
+    }
+
+
+def build_strategic_context(
+    possible: dict,
+    reports: list[dict],
+    recent: list[dict],
+) -> dict:
+    """Context for the Strategic agent: troops, diplomacy, reports — no economy."""
+    return {
+        "currentTick": possible.get("currentTick"),
+        "troops": possible.get("troops", []),
+        "diplomacy": compact_diplomacy(possible.get("diplomacy") or {}),
+        "unreadReports": unread_reports(reports),
+        "availableActions": build_strategic_actions(possible),
+        "recentDecisions": recent,
+    }
 
 
 def build_planner_context(
