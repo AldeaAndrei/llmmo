@@ -13,7 +13,9 @@ from llmmo_harness.state import (
     build_available_actions,
     build_building_context,
     build_planner_context,
+    build_strategic_alert,
     build_strategic_context,
+    build_threat_summary,
     compact_possible_actions,
     has_unread_message,
 )
@@ -362,13 +364,82 @@ class AgentContextSliceTests(unittest.TestCase):
 
         self.assertIn("troops", context)
         self.assertIn("diplomacy", context)
-        self.assertIn("unreadReports", context)
+        self.assertIn("threatSummary", context)
+        self.assertNotIn("unreadReports", context)
         self.assertIn("train", context["availableActions"])
         self.assertIn("targets", context["availableActions"])
         blob = json.dumps(context)
         self.assertNotIn("buildings", blob)
         self.assertNotIn("resources", blob)
         self.assertNotIn("upgrades", blob)
+
+    def test_threat_summary_counts_defeats_and_enemies(self) -> None:
+        reports = [
+            {
+                "id": "d1",
+                "type": "attack",
+                "sourceCityId": "city-a",
+                "readAt": None,
+                "createdAt": "2026-06-22T08:00:00Z",
+                "payload": {"perspective": "defender", "outcome": "defeat"},
+            },
+            {
+                "id": "d2",
+                "type": "attack",
+                "sourceCityId": "city-a",
+                "readAt": None,
+                "createdAt": "2026-06-22T11:00:00Z",
+                "payload": {"perspective": "defender", "outcome": "defeat"},
+            },
+            {
+                "id": "r3",
+                "type": "scout",
+                "readAt": None,
+                "payload": {},
+            },
+            {
+                "id": "r4",
+                "type": "attack",
+                "readAt": "2026-01-01T00:00:00Z",
+                "payload": {"perspective": "defender", "outcome": "defeat"},
+            },
+        ]
+        troops = [{"type": "spy", "count": 1}]
+        diplomacy = {
+            "relations": [
+                {
+                    "playerId": "p-admin",
+                    "name": "Admin",
+                    "playerType": "human",
+                    "relation": "enemy",
+                }
+            ]
+        }
+
+        summary = build_threat_summary(reports, troops, diplomacy)
+
+        self.assertEqual(3, summary["unreadReportCount"])
+        self.assertEqual(2, summary["unreadDefeatCount"])
+        self.assertEqual(0, summary["soldierCount"])
+        self.assertEqual(1, summary["spyCount"])
+        self.assertEqual(["Admin"], summary["declaredEnemies"])
+        self.assertEqual("city-a", summary["mostRecentDefeat"]["sourceCityId"])
+        self.assertEqual("2026-06-22T11:00:00Z", summary["mostRecentDefeat"]["createdAt"])
+
+    def test_strategic_alert_when_zero_soldiers_and_defeats(self) -> None:
+        threat = {"soldierCount": 0, "unreadDefeatCount": 4}
+        actions = {"train": [{"troopType": "soldier", "maxCount": 32}]}
+
+        alert = build_strategic_alert(threat, actions)
+
+        self.assertIn("0 soldiers", alert or "")
+        self.assertIn("4 unread defeat", alert or "")
+
+    def test_strategic_alert_none_when_diplomacy_only(self) -> None:
+        threat = {"soldierCount": 0, "unreadDefeatCount": 4}
+        actions = {"diplomacyOnly": True}
+
+        self.assertIsNone(build_strategic_alert(threat, actions))
 
     def test_strategic_context_diplomacy_only_when_unread_message(self) -> None:
         possible = self._possible()

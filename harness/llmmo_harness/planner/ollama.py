@@ -13,6 +13,7 @@ from llmmo_harness.state import (
     BUILDING_COMMAND_TYPES,
     STRATEGIC_COMMAND_TYPES,
     build_building_context,
+    build_strategic_alert,
     build_strategic_context,
     format_recent_decisions,
     has_unread_message,
@@ -38,7 +39,7 @@ Your priorities, in order:
 4. Strike. Attack declared enemies with soldiers when canAttack is true — never attack declared allies.
 5. Engage. Reply to unread messages; use diplomacy when it serves the city's security.
 
-Temperament: neutral but resolute. You do not sit idle when train or valid attacks are available. An empty command is only correct when no train, attack, or diplomacy action is allowed by availableActions."""
+Temperament: neutral but resolute. You do not sit idle when train or valid attacks are available. When you have no soldiers and can train them, rebuilding soldiers overrides scouting and idle. An empty command is only correct when no train, attack, or diplomacy action is allowed by availableActions."""
 
 BUILDING_RULES_PROMPT = """You are the BUILDING MANAGER. You decide building upgrades ONLY.
 You see your resources and your buildings. You do not control troops, attacks, or diplomacy.
@@ -90,15 +91,16 @@ Troop roles (game facts):
 Rules (follow strictly):
 0. Every command MUST include a non-empty "reason".
 1. Return 0 or 1 commands. Return "commands": [] only when availableActions has no train, no valid attack targets for your troops, and no diplomacy actions you should take.
-2. For attack, "count" is always exactly 1. For train, "count" may be any whole number from 1 up to that troop's maxCount in availableActions.train — train a batch (not just 1) when rebuilding forces. troops[].count is current inventory, NOT the command count.
-3. For train, use a troopType from availableActions.train with count between 1 and its maxCount.
-4. For attack, use a targetCityId from availableActions.targets where canAttack is true (soldier) or canScout is true (spy).
-5. Training a spy does NOT scout. Scouting requires attack with troopType spy, count 1.
-6. Never attack a target whose relation is "ally".
-7. Message/ally/enemy/clear_relation use toPlayerId from targets[].targetPlayerId, diplomacy.relations, or latestUnreadMessage.fromPlayerId.
-8. Only send a message when diplomacy.canSendMessage is true; only declare ally/enemy/clear_relation when diplomacy.canDeclareDiplomacy is true.
-9. When availableActions.diplomacyOnly is true, only message/ally/enemy/clear_relation are valid, and toPlayerId MUST equal availableActions.mustReplyToPlayerId (reply to the sender of the unread message).
-10. Avoid repeating the same command type AND troopType/target as your most recent entry in recentDecisions (e.g. do not train spy again right after train spy). Training soldiers after training spies, or attacking after training, is encouraged. Do not return [] merely because you trained recently — choose a different valid action if one exists. Each reason must be specific to this tick."""
+2. If threatSummary.soldierCount is 0 (or troops has no soldier), availableActions.train includes soldier, and diplomacyOnly is not true, you MUST return a train command for soldier with count equal to that entry's maxCount. Do not return [] in this situation.
+3. For attack, "count" is always exactly 1. For train, "count" may be any whole number from 1 up to that troop's maxCount in availableActions.train — train a batch (not just 1) when rebuilding forces. troops[].count is current inventory, NOT the command count.
+4. For train, use a troopType from availableActions.train with count between 1 and its maxCount.
+5. For attack, use a targetCityId from availableActions.targets where canAttack is true (soldier) or canScout is true (spy).
+6. Training a spy does NOT scout. Scouting requires attack with troopType spy, count 1.
+7. Never attack a target whose relation is "ally".
+8. Message/ally/enemy/clear_relation use toPlayerId from targets[].targetPlayerId, diplomacy.relations, or latestUnreadMessage.fromPlayerId.
+9. Only send a message when diplomacy.canSendMessage is true; only declare ally/enemy/clear_relation when diplomacy.canDeclareDiplomacy is true.
+10. When availableActions.diplomacyOnly is true, only message/ally/enemy/clear_relation are valid, and toPlayerId MUST equal availableActions.mustReplyToPlayerId (reply to the sender of the unread message).
+11. Avoid repeating the same command type AND troopType/target as your most recent entry in recentDecisions (e.g. do not train spy again right after train spy). Training soldiers after training spies, or attacking after training, is encouraged. Do not return [] merely because you trained recently — choose a different valid action if one exists. Each reason must be specific to this tick."""
 
 BUILDING_SYSTEM_PROMPT = f"{BUILDING_PERSONALITY_PROMPT}\n\n{BUILDING_RULES_PROMPT}"
 STRATEGIC_SYSTEM_PROMPT = f"{STRATEGIC_PERSONALITY_PROMPT}\n\n{STRATEGIC_RULES_PROMPT}"
@@ -175,10 +177,13 @@ class OllamaPlanner:
         context: dict,
         observed_tick: int,
         allowed_types: frozenset[str],
+        user_suffix: str | None = None,
     ) -> list[dict]:
+        suffix_block = f"{user_suffix}\n\n" if user_suffix else ""
         user_content = (
             f"{label.capitalize()} context (JSON):\n"
             f"{json.dumps(context, separators=(',', ':'))}\n\n"
+            f"{suffix_block}"
             f"Set observedAtTick to {observed_tick}. "
             "Return 0 or 1 commands allowed by availableActions."
         )
@@ -257,6 +262,11 @@ class OllamaPlanner:
             self.memory.get_recent_by_types(city_id, STRATEGIC_COMMAND_TYPES, limit=2)
         )
         strategic_context = build_strategic_context(possible, reports, strategic_recent)
+        strategic_actions = strategic_context["availableActions"]
+        strategic_alert = build_strategic_alert(
+            strategic_context["threatSummary"],
+            strategic_actions,
+        )
         commands.extend(
             self._run_agent(
                 label="strategy agent",
@@ -264,6 +274,7 @@ class OllamaPlanner:
                 context=strategic_context,
                 observed_tick=observed_tick,
                 allowed_types=STRATEGIC_COMMAND_TYPES,
+                user_suffix=strategic_alert,
             )
         )
 

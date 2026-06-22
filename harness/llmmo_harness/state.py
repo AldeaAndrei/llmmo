@@ -138,6 +138,71 @@ def unread_reports(reports: list[dict]) -> list[dict]:
     return [report for report in reports if report.get("readAt") is None]
 
 
+def troop_count(troops: list[dict], troop_type: str) -> int:
+    return sum(
+        int(entry.get("count", 0))
+        for entry in troops
+        if entry.get("type") == troop_type
+    )
+
+
+def build_threat_summary(
+    reports: list[dict],
+    troops: list[dict],
+    diplomacy: dict,
+) -> dict:
+    unread = unread_reports(reports)
+    defeat_reports: list[dict] = []
+    for report in unread:
+        if report.get("type") != "attack":
+            continue
+        payload = report.get("payload") or {}
+        if payload.get("perspective") == "defender" and payload.get("outcome") == "defeat":
+            defeat_reports.append(report)
+
+    relations = diplomacy.get("relations") or diplomacy.get("players") or []
+    declared_enemies = [
+        relation["name"]
+        for relation in relations
+        if relation.get("relation") == "enemy" and relation.get("name")
+    ]
+
+    summary: dict = {
+        "unreadReportCount": len(unread),
+        "unreadDefeatCount": len(defeat_reports),
+        "soldierCount": troop_count(troops, "soldier"),
+        "spyCount": troop_count(troops, "spy"),
+    }
+    if declared_enemies:
+        summary["declaredEnemies"] = declared_enemies
+
+    if defeat_reports:
+        latest = max(defeat_reports, key=lambda report: report.get("createdAt") or "")
+        summary["mostRecentDefeat"] = {
+            "outcome": "defeat",
+            "sourceCityId": latest.get("sourceCityId"),
+            "createdAt": latest.get("createdAt"),
+        }
+
+    return summary
+
+
+def build_strategic_alert(threat_summary: dict, actions: dict) -> str | None:
+    if actions.get("diplomacyOnly"):
+        return None
+    train = actions.get("train") or []
+    can_train_soldier = any(option.get("troopType") == "soldier" for option in train)
+    if threat_summary.get("soldierCount", 0) != 0 or not can_train_soldier:
+        return None
+    defeats = int(threat_summary.get("unreadDefeatCount", 0))
+    if defeats > 0:
+        return (
+            f"Alert: 0 soldiers, {defeats} unread defeat(s) — "
+            "train soldiers if train is available."
+        )
+    return "Alert: 0 soldiers — train soldiers if train is available."
+
+
 def build_building_context(
     city: dict,
     possible: dict,
@@ -196,12 +261,14 @@ def build_strategic_context(
     reports: list[dict],
     recent: list[dict],
 ) -> dict:
-    """Context for the Strategic agent: troops, diplomacy, reports — no economy."""
+    """Context for the Strategic agent: troops, diplomacy, threat summary — no economy."""
+    troops = possible.get("troops", [])
+    diplomacy = possible.get("diplomacy") or {}
     return {
         "currentTick": possible.get("currentTick"),
-        "troops": possible.get("troops", []),
-        "diplomacy": compact_diplomacy(possible.get("diplomacy") or {}),
-        "unreadReports": unread_reports(reports),
+        "troops": troops,
+        "diplomacy": compact_diplomacy(diplomacy),
+        "threatSummary": build_threat_summary(reports, troops, diplomacy),
         "availableActions": build_strategic_actions(possible),
         "recentDecisions": recent,
     }
