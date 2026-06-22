@@ -71,11 +71,11 @@ Schema:
   ]
 }}
 
-Example reply to unread (use replyTarget.toPlayerId and subject "Re: <their subject>"):
-{{"schemaVersion":1,"observedAtTick":71521,"commands":[{{"type":"message","toPlayerId":"<uuid>","subject":"Re: Attack","body":"We received your message.","reason":"Replying to the war declaration."}}]}}
+Example reply to unread (use replyTarget.toPlayerId and subject "Re: <their subject>"). Use single braces only:
+{"schemaVersion":1,"observedAtTick":71521,"commands":[{"type":"message","toPlayerId":"<uuid>","subject":"Re: Attack","body":"We received your message.","reason":"Replying to the war declaration."}]}
 
 Rules (follow strictly):
-0. Every command MUST include a non-empty "reason".
+0. Every command MUST include a non-empty "reason". Output valid JSON with single { and } braces — never {{ or }}.
 1. Return 0 or 1 commands. Return "commands": [] only when availableActions.canSendMessage and availableActions.canDeclareDiplomacy are both false.
 2. If unreadMessages is non-empty and canSendMessage is true, you MUST return a message to replyTarget.toPlayerId (or mustReplyToPlayerId). Use subject "Re: <their subject>". Do not return [].
 3. If unreadMessages is empty, canSendMessage is true, and socialSummary.unreadDefeatCount > 0, you MUST message a declared enemy from socialSummary.declaredEnemies or a human from socialSummary.humanPlayers. Do not return [].
@@ -151,6 +151,18 @@ def _extract_json(text: str) -> str:
         if match:
             return match.group(1).strip()
     return text
+
+
+def _repair_doubled_json_braces(text: str) -> str:
+    return text.replace("{{", "{").replace("}}", "}")
+
+
+def _parse_llm_json(text: str) -> dict:
+    payload = _extract_json(text)
+    try:
+        return json.loads(payload)
+    except json.JSONDecodeError:
+        return json.loads(_repair_doubled_json_braces(payload))
 
 
 def _log_agent_exchange(
@@ -244,7 +256,7 @@ class OllamaPlanner:
             )
 
         try:
-            raw = json.loads(_extract_json(content))
+            raw = _parse_llm_json(content)
         except json.JSONDecodeError:
             print(f"{label}: invalid JSON response, no command", flush=True)
             return []
