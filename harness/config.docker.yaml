@@ -3,6 +3,11 @@ api:
   base_url: http://backend:8080/api/v1
   api_key_env: LLMMO_AGENT_KEY
 
+agents:
+  building_agent_on: false
+  strategy_agent_on: false
+  social_agent_on: true
+
 planner:
   type: ollama
   mock_plan_path: plans/mock_default.json

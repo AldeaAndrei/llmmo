@@ -1,7 +1,7 @@
 import json
 
 from llmmo_harness.executor import command_action_dict
-from llmmo_harness.planner.validation import filter_plan_to_possible_actions
+from llmmo_harness.planner.validation import command_allowed, filter_plan_to_possible_actions
 from llmmo_harness.schema import (
     AttackCommand,
     CommandPlan,
@@ -13,11 +13,14 @@ from llmmo_harness.state import (
     build_available_actions,
     build_building_context,
     build_planner_context,
+    build_social_context,
     build_strategic_alert,
     build_strategic_context,
     build_threat_summary,
     compact_possible_actions,
+    enrich_possible_for_validation,
     has_unread_message,
+    merge_players_with_relations,
 )
 import unittest
 
@@ -363,7 +366,7 @@ class AgentContextSliceTests(unittest.TestCase):
         context = build_strategic_context(self._possible(), [], [])
 
         self.assertIn("troops", context)
-        self.assertIn("diplomacy", context)
+        self.assertNotIn("diplomacy", context)
         self.assertIn("threatSummary", context)
         self.assertNotIn("unreadReports", context)
         self.assertIn("train", context["availableActions"])
@@ -441,7 +444,104 @@ class AgentContextSliceTests(unittest.TestCase):
 
         self.assertIsNone(build_strategic_alert(threat, actions))
 
-    def test_strategic_context_diplomacy_only_when_unread_message(self) -> None:
+    def test_social_context_includes_players_and_unread_messages(self) -> None:
+        possible = self._possible()
+        players = [
+            {"id": "p1", "name": "Alpha", "playerType": "llm"},
+            {"id": "p2", "name": "Beta", "playerType": "human"},
+        ]
+        relations = [
+            {
+                "otherPlayerId": "p2",
+                "otherPlayerName": "Beta",
+                "relation": "enemy",
+            }
+        ]
+        messages = [
+            {
+                "id": "m1",
+                "fromPlayerId": "p2",
+                "fromPlayerName": "Beta",
+                "toPlayerId": "me",
+                "subject": "Hello",
+                "body": "Truce?",
+                "sentAtTick": 100,
+                "readAt": None,
+            },
+            {
+                "id": "m2",
+                "fromPlayerId": "me",
+                "toPlayerId": "p1",
+                "subject": "Hi",
+                "body": "Hey",
+                "sentAtTick": 90,
+                "readAt": None,
+            },
+        ]
+
+        context = build_social_context(
+            possible,
+            players,
+            relations,
+            messages,
+            [],
+            "me",
+            [],
+        )
+
+        self.assertEqual(2, len(context["players"]))
+        self.assertEqual("enemy", context["players"][1]["relation"])
+        self.assertEqual(1, len(context["unreadMessages"]))
+        self.assertEqual("Beta", context["unreadMessages"][0]["fromPlayerName"])
+        self.assertTrue(context["availableActions"]["canSendMessage"])
+
+    def test_social_actions_diplomacy_only_when_unread_message(self) -> None:
+        possible = self._possible()
+        possible["diplomacy"]["latestUnreadMessage"] = {
+            "id": "m1",
+            "fromPlayerId": "p1",
+            "fromPlayerName": "Foe",
+        }
+
+        context = build_social_context(possible, [], [], [], [], "me", [])
+        actions = context["availableActions"]
+
+        self.assertTrue(actions["diplomacyOnly"])
+        self.assertEqual("p1", actions["mustReplyToPlayerId"])
+
+    def test_merge_players_with_relations(self) -> None:
+        merged = merge_players_with_relations(
+            [{"id": "p1", "name": "A", "playerType": "llm"}],
+            [{"otherPlayerId": "p1", "relation": "ally"}],
+        )
+
+        self.assertEqual("ally", merged[0]["relation"])
+
+    def test_diplomacy_allows_any_player_when_all_player_ids_present(self) -> None:
+        possible = {
+            "diplomacy": {"canSendMessage": True, "relations": []},
+            "targets": [],
+            "allPlayerIds": ["distant-player-id"],
+        }
+        command = MessageCommand(
+            type="message",
+            toPlayerId="distant-player-id",
+            subject="Hello",
+            body="There",
+            reason="Opening channel",
+        )
+
+        self.assertTrue(command_allowed(command, possible))
+
+    def test_enrich_possible_for_validation(self) -> None:
+        enriched = enrich_possible_for_validation(
+            {"currentTick": 1},
+            [{"id": "p1"}, {"id": "p2"}],
+        )
+
+        self.assertEqual(["p1", "p2"], enriched["allPlayerIds"])
+
+    def test_strategic_context_keeps_train_when_unread_message(self) -> None:
         possible = self._possible()
         possible["diplomacy"]["latestUnreadMessage"] = {
             "id": "m1",
@@ -452,10 +552,9 @@ class AgentContextSliceTests(unittest.TestCase):
         context = build_strategic_context(possible, [], [])
         actions = context["availableActions"]
 
-        self.assertTrue(actions["diplomacyOnly"])
-        self.assertEqual("p1", actions["mustReplyToPlayerId"])
-        self.assertNotIn("train", actions)
-        self.assertNotIn("targets", actions)
+        self.assertIn("train", actions)
+        self.assertIn("targets", actions)
+        self.assertNotIn("diplomacyOnly", actions)
 
 
 if __name__ == "__main__":

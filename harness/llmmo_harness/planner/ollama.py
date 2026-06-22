@@ -4,17 +4,20 @@ import re
 import httpx
 
 from llmmo_harness.client import GameClient
-from llmmo_harness.config import OllamaConfig
+from llmmo_harness.config import AgentsConfig, OllamaConfig
 from llmmo_harness.memory import DecisionMemory
 from llmmo_harness.planner.normalize import parse_plan_from_llm
 from llmmo_harness.planner.validation import filter_plan_to_possible_actions
 from llmmo_harness.schema import CommandPlan, set_building_types
 from llmmo_harness.state import (
     BUILDING_COMMAND_TYPES,
+    SOCIAL_COMMAND_TYPES,
     STRATEGIC_COMMAND_TYPES,
     build_building_context,
+    build_social_context,
     build_strategic_alert,
     build_strategic_context,
+    enrich_possible_for_validation,
     format_recent_decisions,
     has_unread_message,
     resolve_first_city,
@@ -30,16 +33,25 @@ Your priorities, in order:
 
 Temperament: patient and practical. You invest in compounding upgrades. When several upgrades are affordable, prefer production or wall over repeating the same building type. An empty command is only correct when availableActions.upgrades is empty."""
 
-STRATEGIC_PERSONALITY_PROMPT = """You are the STRATEGIC COMMANDER for a tick-based strategy city. You focus only on troops, combat, scouting, and diplomacy.
+STRATEGIC_PERSONALITY_PROMPT = """You are the STRATEGIC COMMANDER for a tick-based strategy city. You focus only on troops, combat, and scouting.
 
 Your priorities, in order:
 1. Survive. Field soldiers for defense; spies do not protect the city.
 2. Rebuild. After defeats, train soldiers in batches when train is available.
 3. See. Scout unknown neighbors with spy attacks when you have spies to spare and soldiers are not urgently needed.
 4. Strike. Attack declared enemies with soldiers when canAttack is true — never attack declared allies.
-5. Engage. Reply to unread messages; use diplomacy when it serves the city's security.
 
-Temperament: neutral but resolute. You do not sit idle when train or valid attacks are available. When you have no soldiers and can train them, rebuilding soldiers overrides scouting and idle. An empty command is only correct when no train, attack, or diplomacy action is allowed by availableActions."""
+Temperament: neutral but resolute. You do not sit idle when train or valid attacks are available. When you have no soldiers and can train them, rebuilding soldiers overrides scouting and idle. An empty command is only correct when availableActions has no train and no valid attack targets for your troops."""
+
+SOCIAL_PERSONALITY_PROMPT = """You are the SOCIAL ENVOY for a tick-based strategy city. You focus only on diplomacy, messaging, and interpreting reports.
+
+Your priorities, in order:
+1. Reply. Answer every unread message in your inbox.
+2. Relate. Set ally or enemy relations when it serves the city's interests.
+3. Inform. Use unread reports to inform your tone and diplomatic stance.
+4. Reach out. Message any player when you have something worth saying and message cooldown allows it.
+
+Temperament: articulate and bold. You may message or declare relations with any player in the players list. An empty command is only correct when availableActions blocks all diplomacy and you have no unread messages requiring reply."""
 
 BUILDING_RULES_PROMPT = """You are the BUILDING MANAGER. You decide building upgrades ONLY.
 You see your resources and your buildings. You do not control troops, attacks, or diplomacy.
@@ -64,8 +76,8 @@ Rules (follow strictly):
 5. Avoid upgrading the same buildingType as your most recent upgrade in recentDecisions unless no other upgrade is worthwhile. Repeating a different buildingType is fine. Do not return [] merely because you upgraded storage recently — pick another listed upgrade if upgrades is non-empty.
 6. The reason must be specific to this tick (no copy-paste)."""
 
-STRATEGIC_RULES_PROMPT = """You are the STRATEGIC COMMANDER. You decide troops, attacks, and diplomacy ONLY.
-You see your troops, diplomacy, and incoming reports/messages. You do not control building upgrades.
+STRATEGIC_RULES_PROMPT = """You are the STRATEGIC COMMANDER. You decide troops and attacks ONLY.
+You see your troops and a military threat summary. You do not control building upgrades or diplomacy.
 
 Output ONLY valid JSON (no markdown, no commentary outside the JSON).
 
@@ -76,11 +88,7 @@ Schema:
   "commands": [
     {{ "type": "train", "troopType": "soldier"|"spy", "count": <1..maxCount>, "reason": "<1-2 sentences>" }},
     {{ "type": "attack", "targetCityId": "<uuid>", "troopType": "soldier", "count": 1, "reason": "<1-2 sentences>" }},
-    {{ "type": "attack", "targetCityId": "<uuid>", "troopType": "spy", "count": 1, "reason": "<1-2 sentences>" }},
-    {{ "type": "message", "toPlayerId": "<uuid>", "subject": "<text>", "body": "<text>", "reason": "<1-2 sentences>" }},
-    {{ "type": "ally", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }},
-    {{ "type": "enemy", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }},
-    {{ "type": "clear_relation", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }}
+    {{ "type": "attack", "targetCityId": "<uuid>", "troopType": "spy", "count": 1, "reason": "<1-2 sentences>" }}
   ]
 }}
 
@@ -90,20 +98,44 @@ Troop roles (game facts):
 
 Rules (follow strictly):
 0. Every command MUST include a non-empty "reason".
-1. Return 0 or 1 commands. Return "commands": [] only when availableActions has no train, no valid attack targets for your troops, and no diplomacy actions you should take.
-2. If threatSummary.soldierCount is 0 (or troops has no soldier), availableActions.train includes soldier, and diplomacyOnly is not true, you MUST return a train command for soldier with count equal to that entry's maxCount. Do not return [] in this situation.
+1. Return 0 or 1 commands. Return "commands": [] only when availableActions has no train and no valid attack targets for your troops.
+2. If threatSummary.soldierCount is 0 (or troops has no soldier), availableActions.train includes soldier, you MUST return a train command for soldier with count equal to that entry's maxCount. Do not return [] in this situation.
 3. For attack, "count" is always exactly 1. For train, "count" may be any whole number from 1 up to that troop's maxCount in availableActions.train — train a batch (not just 1) when rebuilding forces. troops[].count is current inventory, NOT the command count.
 4. For train, use a troopType from availableActions.train with count between 1 and its maxCount.
 5. For attack, use a targetCityId from availableActions.targets where canAttack is true (soldier) or canScout is true (spy).
 6. Training a spy does NOT scout. Scouting requires attack with troopType spy, count 1.
 7. Never attack a target whose relation is "ally".
-8. Message/ally/enemy/clear_relation use toPlayerId from targets[].targetPlayerId, diplomacy.relations, or latestUnreadMessage.fromPlayerId.
-9. Only send a message when diplomacy.canSendMessage is true; only declare ally/enemy/clear_relation when diplomacy.canDeclareDiplomacy is true.
-10. When availableActions.diplomacyOnly is true, only message/ally/enemy/clear_relation are valid, and toPlayerId MUST equal availableActions.mustReplyToPlayerId (reply to the sender of the unread message).
-11. Avoid repeating the same command type AND troopType/target as your most recent entry in recentDecisions (e.g. do not train spy again right after train spy). Training soldiers after training spies, or attacking after training, is encouraged. Do not return [] merely because you trained recently — choose a different valid action if one exists. Each reason must be specific to this tick."""
+8. Avoid repeating the same command type AND troopType/target as your most recent entry in recentDecisions (e.g. do not train spy again right after train spy). Training soldiers after training spies, or attacking after training, is encouraged. Do not return [] merely because you trained recently — choose a different valid action if one exists. Each reason must be specific to this tick."""
+
+SOCIAL_RULES_PROMPT = """You are the SOCIAL ENVOY. You decide messages and diplomacy ONLY.
+You see all players, unread messages, unread reports, and diplomacy cooldowns. You do not control buildings, troops, or attacks.
+
+Output ONLY valid JSON (no markdown, no commentary outside the JSON).
+
+Schema:
+{{
+  "schemaVersion": 1,
+  "observedAtTick": <number>,
+  "commands": [
+    {{ "type": "message", "toPlayerId": "<uuid>", "subject": "<text>", "body": "<text>", "reason": "<1-2 sentences>" }},
+    {{ "type": "ally", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }},
+    {{ "type": "enemy", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }},
+    {{ "type": "clear_relation", "toPlayerId": "<uuid>", "reason": "<1-2 sentences>" }}
+  ]
+}}
+
+Rules (follow strictly):
+0. Every command MUST include a non-empty "reason".
+1. Return 0 or 1 commands. Return "commands": [] only when availableActions.canSendMessage and availableActions.canDeclareDiplomacy are both false AND unreadMessages is empty.
+2. You may use any playerId from players for message/ally/enemy/clear_relation when cooldowns allow.
+3. Only send a message when availableActions.canSendMessage is true. Only declare ally/enemy/clear_relation when availableActions.canDeclareDiplomacy is true.
+4. When availableActions.diplomacyOnly is true, only message/ally/enemy/clear_relation are valid, and toPlayerId MUST equal availableActions.mustReplyToPlayerId (reply to the sender of an unread message).
+5. When unreadMessages is non-empty and canSendMessage is true, prefer replying to an unread sender before cold-messaging someone else.
+6. Avoid repeating the same command type AND toPlayerId as your most recent entry in recentDecisions unless still clearly warranted. Each reason must be specific to this tick."""
 
 BUILDING_SYSTEM_PROMPT = f"{BUILDING_PERSONALITY_PROMPT}\n\n{BUILDING_RULES_PROMPT}"
 STRATEGIC_SYSTEM_PROMPT = f"{STRATEGIC_PERSONALITY_PROMPT}\n\n{STRATEGIC_RULES_PROMPT}"
+SOCIAL_SYSTEM_PROMPT = f"{SOCIAL_PERSONALITY_PROMPT}\n\n{SOCIAL_RULES_PROMPT}"
 
 
 def _extract_json(text: str) -> str:
@@ -148,9 +180,15 @@ def _summarize_command(command: dict) -> str:
 
 
 class OllamaPlanner:
-    def __init__(self, config: OllamaConfig, memory: DecisionMemory) -> None:
+    def __init__(
+        self,
+        config: OllamaConfig,
+        memory: DecisionMemory,
+        agents: AgentsConfig,
+    ) -> None:
         self.config = config
         self.memory = memory
+        self.agents = agents
 
     def _complete(self, system: str, user: str) -> str:
         url = f"{self.config.base_url.rstrip('/')}/chat/completions"
@@ -218,7 +256,6 @@ class OllamaPlanner:
                 continue
             commands.append(command)
 
-        # Each agent may contribute at most one command per plan.
         commands = commands[:1]
         if commands:
             print(f"{label} -> {_summarize_command(commands[0])}", flush=True)
@@ -229,64 +266,117 @@ class OllamaPlanner:
     def plan(self, client: GameClient) -> CommandPlan:
         city = resolve_first_city(client)
         city_id = str(city["id"])
+        auth_player_id = str(city.get("playerId", ""))
         buildings = client.get_building_catalog()
         set_building_types(entry["type"] for entry in buildings)
 
         possible = client.get_possible_actions(city_id)
         reports = client.get_reports()
+        players = client.get_diplomacy_players()
+        relations = client.get_diplomacy_relations()
+        messages = client.get_diplomacy_messages()
+        possible_for_validation = enrich_possible_for_validation(possible, players)
+
         observed_tick = int(possible.get("currentTick", 0))
         unread = has_unread_message(possible)
+        social_only = unread and self.agents.social_agent_on
 
         commands: list[dict] = []
 
-        # --- Building Manager (skipped while an unread message blocks economy) ---
-        if unread:
-            print("=== building agent skipped (unread message) ===", flush=True)
-        else:
-            building_recent = format_recent_decisions(
-                self.memory.get_recent_by_types(city_id, BUILDING_COMMAND_TYPES, limit=2)
+        if social_only:
+            print(
+                "=== building/strategy agents skipped (unread message, social only) ===",
+                flush=True,
             )
-            building_context = build_building_context(city, possible, building_recent)
-            commands.extend(
-                self._run_agent(
-                    label="building agent",
-                    system=BUILDING_SYSTEM_PROMPT,
-                    context=building_context,
-                    observed_tick=observed_tick,
-                    allowed_types=BUILDING_COMMAND_TYPES,
+        else:
+            if unread:
+                print("=== building agent skipped (unread message) ===", flush=True)
+            elif self.agents.building_agent_on:
+                building_recent = format_recent_decisions(
+                    self.memory.get_recent_by_types(
+                        city_id, BUILDING_COMMAND_TYPES, limit=2
+                    )
+                )
+                building_context = build_building_context(
+                    city, possible, building_recent
+                )
+                commands.extend(
+                    self._run_agent(
+                        label="building agent",
+                        system=BUILDING_SYSTEM_PROMPT,
+                        context=building_context,
+                        observed_tick=observed_tick,
+                        allowed_types=BUILDING_COMMAND_TYPES,
+                    )
+                )
+            else:
+                print("=== building agent disabled ===", flush=True)
+
+            if self.agents.strategy_agent_on:
+                strategic_recent = format_recent_decisions(
+                    self.memory.get_recent_by_types(
+                        city_id, STRATEGIC_COMMAND_TYPES, limit=2
+                    )
+                )
+                strategic_context = build_strategic_context(
+                    possible, reports, strategic_recent
+                )
+                strategic_actions = strategic_context["availableActions"]
+                strategic_alert = build_strategic_alert(
+                    strategic_context["threatSummary"],
+                    strategic_actions,
+                )
+                commands.extend(
+                    self._run_agent(
+                        label="strategy agent",
+                        system=STRATEGIC_SYSTEM_PROMPT,
+                        context=strategic_context,
+                        observed_tick=observed_tick,
+                        allowed_types=STRATEGIC_COMMAND_TYPES,
+                        user_suffix=strategic_alert,
+                    )
+                )
+            else:
+                print("=== strategy agent disabled ===", flush=True)
+
+        if self.agents.social_agent_on:
+            social_recent = format_recent_decisions(
+                self.memory.get_recent_by_types(
+                    city_id, SOCIAL_COMMAND_TYPES, limit=2
                 )
             )
-
-        # --- Strategic Commander ---
-        strategic_recent = format_recent_decisions(
-            self.memory.get_recent_by_types(city_id, STRATEGIC_COMMAND_TYPES, limit=2)
-        )
-        strategic_context = build_strategic_context(possible, reports, strategic_recent)
-        strategic_actions = strategic_context["availableActions"]
-        strategic_alert = build_strategic_alert(
-            strategic_context["threatSummary"],
-            strategic_actions,
-        )
-        commands.extend(
-            self._run_agent(
-                label="strategy agent",
-                system=STRATEGIC_SYSTEM_PROMPT,
-                context=strategic_context,
-                observed_tick=observed_tick,
-                allowed_types=STRATEGIC_COMMAND_TYPES,
-                user_suffix=strategic_alert,
+            social_context = build_social_context(
+                possible,
+                players,
+                relations,
+                messages,
+                reports,
+                auth_player_id,
+                social_recent,
             )
-        )
+            commands.extend(
+                self._run_agent(
+                    label="social agent",
+                    system=SOCIAL_SYSTEM_PROMPT,
+                    context=social_context,
+                    observed_tick=observed_tick,
+                    allowed_types=SOCIAL_COMMAND_TYPES,
+                )
+            )
+        else:
+            print("=== social agent disabled ===", flush=True)
 
         raw_plan = {
             "schemaVersion": 1,
             "observedAtTick": observed_tick,
             "commands": commands,
         }
-        plan, repairs = parse_plan_from_llm(raw_plan, possible)
+        plan, repairs = parse_plan_from_llm(raw_plan, possible_for_validation)
         if repairs:
             print(f"plan repairs: {'; '.join(repairs)}", flush=True)
-        plan, dropped = filter_plan_to_possible_actions(plan, possible)
+        plan, dropped = filter_plan_to_possible_actions(
+            plan, possible_for_validation
+        )
         if dropped:
             print(
                 f"dropped {len(dropped)} command(s) not in possible actions: "

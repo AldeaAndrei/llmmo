@@ -25,7 +25,7 @@ def _build_planner(config: HarnessConfig, memory: DecisionMemory):
     if config.planner.type == "mock":
         return MockPlanner(config.resolve_path(config.planner.mock_plan_path))
     if config.planner.type == "ollama":
-        return OllamaPlanner(config.planner.ollama, memory)
+        return OllamaPlanner(config.planner.ollama, memory, config.agents)
     raise ValueError(f"Unknown planner type: {config.planner.type}")
 
 

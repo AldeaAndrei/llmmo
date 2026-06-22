@@ -129,9 +129,8 @@ def build_available_actions(possible: dict) -> dict:
 
 
 BUILDING_COMMAND_TYPES = frozenset({"upgrade"})
-STRATEGIC_COMMAND_TYPES = frozenset(
-    {"train", "attack", "message", "ally", "enemy", "clear_relation"}
-)
+STRATEGIC_COMMAND_TYPES = frozenset({"train", "attack"})
+SOCIAL_COMMAND_TYPES = frozenset({"message", "ally", "enemy", "clear_relation"})
 
 
 def unread_reports(reports: list[dict]) -> list[dict]:
@@ -232,18 +231,6 @@ def build_building_context(
 
 
 def build_strategic_actions(possible: dict) -> dict:
-    diplomacy = possible.get("diplomacy") or {}
-
-    if has_unread_message(possible):
-        latest = diplomacy.get("latestUnreadMessage") or {}
-        return {
-            "diplomacyOnly": True,
-            "canSendMessage": diplomacy.get("canSendMessage", False),
-            "canDeclareDiplomacy": diplomacy.get("canDeclareDiplomacy", False),
-            "mustReplyToPlayerId": latest.get("fromPlayerId"),
-            "mustReplyToPlayerName": latest.get("fromPlayerName"),
-        }
-
     return {
         "train": [
             {
@@ -256,18 +243,142 @@ def build_strategic_actions(possible: dict) -> dict:
     }
 
 
+def merge_players_with_relations(
+    players: list[dict],
+    relations: list[dict],
+) -> list[dict]:
+    relation_by_id: dict[str, str] = {}
+    for relation in relations:
+        player_id = (
+            relation.get("otherPlayerId")
+            or relation.get("playerId")
+            or relation.get("toPlayerId")
+        )
+        relation_value = relation.get("relation")
+        if player_id and relation_value:
+            relation_by_id[str(player_id).lower()] = relation_value
+
+    merged: list[dict] = []
+    for player in players:
+        player_id = player.get("id") or player.get("playerId")
+        relation = relation_by_id.get(str(player_id).lower()) if player_id else None
+        merged.append(
+            {
+                "playerId": player_id,
+                "name": player.get("name"),
+                "playerType": player.get("playerType"),
+                "relation": relation,
+            }
+        )
+    return merged
+
+
+def compact_social_report(report: dict) -> dict:
+    payload = report.get("payload") or {}
+    entry: dict = {
+        "id": report.get("id"),
+        "type": report.get("type"),
+        "createdAt": report.get("createdAt"),
+    }
+    if report.get("type") == "attack":
+        entry["outcome"] = payload.get("outcome")
+        entry["perspective"] = payload.get("perspective")
+        attacker = payload.get("attacker") or {}
+        defender = payload.get("defender") or {}
+        if payload.get("perspective") == "defender":
+            entry["attackerPower"] = attacker.get("totalPower")
+            entry["defenderPower"] = defender.get("totalPower")
+            entry["wallBonus"] = defender.get("wallBonus")
+    elif report.get("type") == "scout":
+        entry["outcome"] = payload.get("outcome")
+    return entry
+
+
+def compact_unread_messages(messages: list[dict], auth_player_id: str) -> list[dict]:
+    auth = auth_player_id.lower()
+    compact: list[dict] = []
+    for message in messages:
+        if message.get("readAt") is not None:
+            continue
+        to_player_id = str(message.get("toPlayerId", "")).lower()
+        if to_player_id != auth:
+            continue
+        compact.append(
+            {
+                "id": message.get("id"),
+                "fromPlayerId": message.get("fromPlayerId"),
+                "fromPlayerName": message.get("fromPlayerName"),
+                "subject": message.get("subject"),
+                "body": message.get("body"),
+                "sentAtTick": message.get("sentAtTick"),
+            }
+        )
+    return compact
+
+
+def compact_social_reports(reports: list[dict]) -> list[dict]:
+    return [compact_social_report(report) for report in unread_reports(reports)]
+
+
+def build_social_actions(possible: dict) -> dict:
+    diplomacy = possible.get("diplomacy") or {}
+    latest = diplomacy.get("latestUnreadMessage") or {}
+    actions: dict = {
+        "canSendMessage": diplomacy.get("canSendMessage", False),
+        "canDeclareDiplomacy": diplomacy.get("canDeclareDiplomacy", False),
+    }
+    if has_unread_message(possible):
+        actions["diplomacyOnly"] = True
+        actions["mustReplyToPlayerId"] = latest.get("fromPlayerId")
+        actions["mustReplyToPlayerName"] = latest.get("fromPlayerName")
+    return actions
+
+
+def build_social_context(
+    possible: dict,
+    players: list[dict],
+    relations: list[dict],
+    messages: list[dict],
+    reports: list[dict],
+    auth_player_id: str,
+    recent: list[dict],
+) -> dict:
+    """Context for the Social agent: players, messages, compact reports — no economy or troops."""
+    return {
+        "currentTick": possible.get("currentTick"),
+        "players": merge_players_with_relations(players, relations),
+        "unreadMessages": compact_unread_messages(messages, auth_player_id),
+        "unreadReports": compact_social_reports(reports),
+        "availableActions": build_social_actions(possible),
+        "recentDecisions": recent,
+    }
+
+
+def enrich_possible_for_validation(
+    possible: dict,
+    players: list[dict],
+) -> dict:
+    return {
+        **possible,
+        "allPlayerIds": [
+            str(player.get("id") or player.get("playerId"))
+            for player in players
+            if player.get("id") or player.get("playerId")
+        ],
+    }
+
+
 def build_strategic_context(
     possible: dict,
     reports: list[dict],
     recent: list[dict],
 ) -> dict:
-    """Context for the Strategic agent: troops, diplomacy, threat summary — no economy."""
+    """Context for the Strategic agent: troops and military threat summary — no diplomacy."""
     troops = possible.get("troops", [])
     diplomacy = possible.get("diplomacy") or {}
     return {
         "currentTick": possible.get("currentTick"),
         "troops": troops,
-        "diplomacy": compact_diplomacy(diplomacy),
         "threatSummary": build_threat_summary(reports, troops, diplomacy),
         "availableActions": build_strategic_actions(possible),
         "recentDecisions": recent,

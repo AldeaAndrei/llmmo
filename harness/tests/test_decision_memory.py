@@ -105,11 +105,15 @@ class DecisionMemoryTests(unittest.TestCase):
 
         upgrades = self.memory.get_recent_by_types(self.city_id, {"upgrade"}, limit=2)
         strategic = self.memory.get_recent_by_types(
-            self.city_id, {"train", "message"}, limit=5
+            self.city_id, {"train", "attack"}, limit=5
+        )
+        social = self.memory.get_recent_by_types(
+            self.city_id, {"message"}, limit=5
         )
 
         self.assertEqual(["bakery", "wall"], [r.action["buildingType"] for r in upgrades])
-        self.assertEqual({"message", "train"}, {r.action["type"] for r in strategic})
+        self.assertEqual({"train"}, {r.action["type"] for r in strategic})
+        self.assertEqual({"message"}, {r.action["type"] for r in social})
 
     def test_get_recent_is_scoped_per_city(self) -> None:
         self.memory.record(

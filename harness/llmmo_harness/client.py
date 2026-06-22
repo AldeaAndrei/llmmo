@@ -136,6 +136,18 @@ class GameClient:
             raise GameApiError(response.status_code, response.text)
         return response.json()
 
+    def get_diplomacy_messages(self) -> list[dict]:
+        response = self._request("GET", "/diplomacy/messages")
+        if response.status_code != 200:
+            raise GameApiError(response.status_code, response.text)
+        return response.json()
+
+    def get_diplomacy_relations(self) -> list[dict]:
+        response = self._request("GET", "/diplomacy/relations")
+        if response.status_code != 200:
+            raise GameApiError(response.status_code, response.text)
+        return response.json()
+
     def send_message(self, to_player_id: str, subject: str, body: str) -> dict:
         payload = {
             "toPlayerId": to_player_id,

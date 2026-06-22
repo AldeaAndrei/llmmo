@@ -29,6 +29,24 @@ class PlannerConfig:
 
 
 @dataclass
+class AgentsConfig:
+    building_agent_on: bool = True
+    strategy_agent_on: bool = True
+    social_agent_on: bool = True
+
+    def validate(self) -> None:
+        if not (
+            self.building_agent_on
+            or self.strategy_agent_on
+            or self.social_agent_on
+        ):
+            raise ValueError(
+                "At least one agent must be enabled in agents config "
+                "(building_agent_on, strategy_agent_on, social_agent_on)."
+            )
+
+
+@dataclass
 class ScheduleConfig:
     plan_interval_seconds: int = 900
     execute_interval_seconds: int = 30
@@ -43,6 +61,7 @@ class DatabaseConfig:
 @dataclass
 class HarnessConfig:
     api: ApiConfig = field(default_factory=ApiConfig)
+    agents: AgentsConfig = field(default_factory=AgentsConfig)
     planner: PlannerConfig = field(default_factory=PlannerConfig)
     schedule: ScheduleConfig = field(default_factory=ScheduleConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
@@ -71,10 +90,18 @@ def load_config(path: Path) -> HarnessConfig:
         raw = yaml.safe_load(handle) or {}
 
     api_raw = raw.get("api") or {}
+    agents_raw = raw.get("agents") or {}
     planner_raw = raw.get("planner") or {}
     ollama_raw = planner_raw.get("ollama") or {}
     schedule_raw = raw.get("schedule") or {}
     database_raw = raw.get("database") or {}
+
+    agents = AgentsConfig(
+        building_agent_on=bool(agents_raw.get("building_agent_on", True)),
+        strategy_agent_on=bool(agents_raw.get("strategy_agent_on", True)),
+        social_agent_on=bool(agents_raw.get("social_agent_on", True)),
+    )
+    agents.validate()
 
     return HarnessConfig(
         api=ApiConfig(
@@ -82,6 +109,7 @@ def load_config(path: Path) -> HarnessConfig:
             api_key_env=api_raw.get("api_key_env", ApiConfig.api_key_env),
             api_key=api_raw.get("api_key"),
         ),
+        agents=agents,
         planner=PlannerConfig(
             type=planner_raw.get("type", "mock"),
             mock_plan_path=planner_raw.get("mock_plan_path", "plans/mock_default.json"),

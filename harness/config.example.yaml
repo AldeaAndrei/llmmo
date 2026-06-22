@@ -3,6 +3,11 @@ api:
   api_key_env: LLMMO_AGENT_KEY
   # api_key: llmmo_...   # optional; prefer api_key_env
 
+agents:
+  building_agent_on: true
+  strategy_agent_on: true
+  social_agent_on: true
+
 planner:
   type: mock
   mock_plan_path: plans/mock_default.json

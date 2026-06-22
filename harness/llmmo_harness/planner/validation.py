@@ -67,6 +67,10 @@ def _diplomacy_recipient_ids(possible: dict) -> set[str]:
     if sender_id is not None:
         return {sender_id}
 
+    all_player_ids = possible.get("allPlayerIds")
+    if all_player_ids:
+        return {str(player_id).lower() for player_id in all_player_ids}
+
     return _target_player_ids(possible) | _relation_player_ids(possible)
 
 
